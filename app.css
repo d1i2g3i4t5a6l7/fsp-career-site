@@ -338,8 +338,3 @@ body{background:var(--bg-page)}
 .mm2 svg:first-child{margin-bottom:96px}
 @media (max-width:1100px){.mm2{justify-content:flex-start}}
 @media (max-width:560px){.mm2{gap:32px}.mm2 svg:first-child{margin-bottom:48px}}
-.mm2{gap:56px;padding:16px 0}
-.mm2 svg{max-width:52%}
-.mm2 svg:first-child{margin-bottom:120px}
-.lp-hero{grid-template-columns:minmax(0,1fr) minmax(0,600px);gap:72px}
-@media (max-width:560px){.mm2{gap:24px}.mm2 svg:first-child{margin-bottom:56px}}
