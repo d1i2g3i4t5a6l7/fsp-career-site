@@ -1,0 +1,57 @@
+/* ФСП colors — from brandbook p.8 (core) and p.54/64/74 (event + discipline codes) */
+:root{
+/* Brand / logo */
+--fsp-blue:#402FFF;          /* Акцентный/главный — primary accent */
+--fsp-red:#EC1D35;           /* Акцентный/лого */
+--fsp-white:#EDEDED;         /* White/лого */
+--fsp-logo-gray:#C8C9CA;     /* white part of mark on light bg */
+--fsp-digital:#0A006B;       /* Digital-акцент — site, socials, banners */
+/* Grays */
+--fsp-black:#1B1C21;
+--fsp-gray-bright:#2D2E37;
+--fsp-gray-middle:#3A3C46;
+--fsp-gray-light-2:#9B9C9E;
+--fsp-gray-light:#D9D9D9;
+--fsp-pure-white:#FFFFFF;
+/* Interaction shades (derived, oklch from brand blue/red) */
+--fsp-blue-hover:#5545FF;
+--fsp-blue-press:#3324D9;
+--fsp-red-hover:#F03A4F;
+/* Discipline color code (Кубок России palette) */
+--disc-product:#8F1BF4;      /* Фиолетовый — Продуктовое */
+--disc-algo:#402FFD;         /* Синий — Алгоритмическое */
+--disc-uas:#1ED3CA;          /* Бирюзовый — БАС */
+--disc-robotics:#ECB617;     /* Жёлтый — Робототехника */
+--disc-security:#09A953;     /* Зелёный — ИБ */
+--disc-through:#EC1D35;      /* Красный — сквозной */
+/* Event sub-brands */
+--cup-bg:#212330;            /* Кубок России */
+--cup-red:#EC1D35;
+--youth-navy:#0A002E;        /* Первенство России */
+--youth-blue:#3070F5;
+--youth-red:#E93336;
+--youth-gray:#CBCBCB;
+--champ-navy:#0A006B;        /* Чемпионат России */
+--champ-green:#00E05A;
+
+/* Semantic — dark theme is the brand default */
+--bg-page:var(--fsp-black);
+--bg-surface:var(--fsp-gray-bright);
+--bg-surface-2:var(--fsp-gray-middle);
+--bg-inverse:var(--fsp-white);
+--fg-1:var(--fsp-white);
+--fg-2:var(--fsp-gray-light-2);
+--fg-muted:#6B6C72;
+--fg-inverse:var(--fsp-black);
+--fg-accent:var(--fsp-blue);
+--border-1:var(--fsp-gray-middle);
+--border-strong:var(--fsp-gray-light-2);
+--accent:var(--fsp-blue);
+--accent-hover:var(--fsp-blue-hover);
+--accent-press:var(--fsp-blue-press);
+--accent-2:var(--fsp-red);
+--focus-ring:var(--fsp-blue);
+--danger:var(--fsp-red);
+--success:var(--disc-security);
+--warning:var(--disc-robotics);
+}
