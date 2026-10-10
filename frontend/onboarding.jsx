@@ -19,7 +19,7 @@ function Onboarding({hasFsp,onDone,onExit,onEmployer,onHome,step=0,setStep}){
       {step===2&&<ObFsp hasFsp={hasFsp} f={f} set={set} next={next}/>}
       {step===3&&<ObSurvey f={f} set={set} tog={tog} next={next}/>}
       {step===4&&<ObGrade f={f} set={set} next={next}/>}
-      {step===5&&<ObTest f={f} next={next}/>}
+      {step===5&&<ObTest f={f} set={set} next={next} back={()=>setStep(3)}/>}
       {step===6&&<ObResult f={f} onDone={()=>onDone(f)}/>}
     </div>
     {step===0&&<div className="strip"></div>}
@@ -108,60 +108,24 @@ function ObGrade({f,set,next}){
       <span className="cap">{D.specLabel(f.spec)}</span><span className="grade-n">{g.label}</span><span className="hint">{g.hint}</span></button>)}</div>
     <Panel title="Что будет на тесте">
       <div className="grid-3">
-        <div className="stack-8"><Glyph color="var(--accent-text)">{'</>'}</Glyph><b>Лайвкодинг на время</b><span className="hint">Одна задача, 40 минут. Условие собрано из реальных вакансий вашей категории, данные — уникальные для вас.</span></div>
-        <div className="stack-8"><Glyph color="var(--accent-text)">{'{•}'}</Glyph><b>Оценка ИИ</b><span className="hint">Сразу после отправки: корректность, память, граничные случаи, качество кода.</span></div>
-        <div className="stack-8"><Glyph color="var(--fsp-red)">{'>|<'}</Glyph><b>Проверка эксперта</b><span className="hint">Инженер компании-партнёра подтверждает или корректирует оценку ИИ.</span></div>
+        <div className="stack-8"><Glyph color="var(--accent-text)">{'</>'}</Glyph><b>Задача с ИИ-ассистентом</b><span className="hint">Одна задача, 30 минут. Работаете вместе со встроенным ассистентом. Уход со вкладки запрещён.</span></div>
+        <div className="stack-8"><Glyph color="var(--accent-text)">{'{•}'}</Glyph><b>Оценка ИИ</b><span className="hint">Сразу после отправки: отчёт по критериям задачи и балл из 100.</span></div>
+        <div className="stack-8"><Glyph color="var(--fsp-red)">{'>|<'}</Glyph><b>Проверка эксперта</b><span className="hint">Эксперт видит отчёт и при необходимости корректирует оценку ИИ.</span></div>
       </div>
     </Panel>
     <div><Button onClick={next} iconRight="→">Начать тест на {D.gradeLabel(f.grade)}</Button></div>
   </div>;
 }
 
-const SKELETON=`WINDOW = 600  # секунд
-
-def dedupe(stream):
-    # ваше решение
-    ...
-`;
-function ObTest({f,next}){
-  const T=D.TASK;
-  const [code,setCode]=React.useState(SKELETON);
-  const [left,setLeft]=React.useState(T.minutes*60-7*60-12);
-  const [phase,setPhase]=React.useState('code');
-  React.useEffect(()=>{const t=setInterval(()=>setLeft(l=>Math.max(0,l-1)),1000);return()=>clearInterval(t)},[]);
-  const submit=()=>{setPhase('eval');setTimeout(next,1800)};
-  const mm=String(Math.floor(left/60)).padStart(2,'0'),ss=String(left%60).padStart(2,'0');
-  const lines=code.split('\n').length;
-  return <div className="test">
-    <div className="test-bar">
-      <div className="row-12"><ATag>{D.specLabel(f.spec)} · {D.gradeLabel(f.grade)}</ATag><span className="hint">Вариант #A7-3F1 · {T.from}</span></div>
-      <div className="timer"><span className="cap">Осталось</span><span className="timer-n">{mm}:{ss}</span></div>
-    </div>
-    <div className="test-grid">
-      <Panel title={T.title} eyebrow="Задача 1 из 1">
-        <div className="stack-16">
-          <p style={{margin:0,fontSize:14,lineHeight:1.6,textWrap:'pretty'}}>{T.text}</p>
-          <div><div className="cap" style={{marginBottom:8}}>Что проверяется</div><ul className="ul">{T.checks.map(c=><li key={c}>{c}</li>)}</ul></div>
-          <div className="code-sm">{`>>> list(dedupe([e1, e2, e1, e3]))\n[e1, e2, e3]`}</div>
-          <div className="hint">Можно пользоваться документацией. Вставка большого фрагмента кода и уход со вкладки отмечаются в отчёте для эксперта.</div>
-        </div>
-      </Panel>
-      <section className="panel editor">
-        <div className="panel-h"><div className="row-12"><span className="tab on">solution.py</span><span className="tab">tests.py</span></div></div>
-        <div className="ed">
-          <div className="ed-ln">{Array.from({length:Math.max(lines,18)},(_,i)=><div key={i}>{i+1}</div>)}</div>
-          <textarea spellCheck="false" value={code} onChange={e=>setCode(e.target.value)}></textarea>
-        </div>
-        <div className="ed-f">
-          <span className="hint">{phase==='eval'?'ИИ проверяет решение: 18 тестов, анализ сложности…':'Python 3.12 · автосохранение'}</span>
-          <div className="row-12"><Button variant="secondary" size="sm">Запустить тесты</Button><Button size="sm" onClick={submit} disabled={phase==='eval'}>{phase==='eval'?'Проверяем…':'Отправить решение'}</Button></div>
-        </div>
-      </section>
-    </div>
+// Тест на грейд — тот же вайбкодинг-тест с ИИ-ассистентом, что в кабинете; задача и проверка — с бэкенда
+function ObTest({f,set,next,back}){
+  return <div className="stack-24">
+    <ArtHead art="coder"><SectionTitle level={1} eyebrow="{•} тест на грейд">Рабочая задача с ИИ-ассистентом</SectionTitle></ArtHead>
+    <VibeTest inline category={D.specLabel(f.spec)} level={f.grade} onBack={back} onSubmit={id=>{set('attempt',id);next()}}/>
   </div>;
 }
 
-function ObResult({f,onDone}){
+function ObResultDemo({f,onDone}){
   const total=Math.round(D.AI_EVAL.reduce((a,e)=>a+e.v,0)/D.AI_EVAL.length);
   return <div className="stack-24">
     <ArtHead art="result"><SectionTitle level={1} eyebrow="{•} результат">Категория присвоена</SectionTitle></ArtHead>
@@ -182,6 +146,29 @@ function ObResult({f,onDone}){
         <div className="hint" style={{gridColumn:'1 / -1'}}>{e.note}</div></div>)}</div>
     </Panel>
     <p className="sub">Профиль уже виден работодателям в категории с пометкой «ИИ-оценка». После проверки эксперта она сменится на «Подтверждено». Следующая смена грейда — с 07.01.2027.</p>
+    <div><Button onClick={onDone} iconRight="→">Перейти в кабинет</Button></div>
+  </div>;
+}
+function ObResult({f,onDone}){
+  const [res,err]=useAttemptResult(f.attempt);
+  if(!f.attempt) return <ObResultDemo f={f} onDone={onDone}/>;
+  const done=res&&res.status==='done';
+  const annulled=done&&res.review&&res.review.annulled,passed=done&&!annulled&&res.final&&res.final.passed;
+  return <div className="stack-24">
+    <ArtHead art="result"><SectionTitle level={1} eyebrow="{•} результат">{!done?'Проверяем решение':passed?'Категория присвоена':'Категория не присвоена'}</SectionTitle></ArtHead>
+    {!done?<Panel><span className="hint">{res&&res.status==='failed'?'Проверка не удалась. Решение сохранено — попробуйте открыть результат позже.':err||'ИИ проверяет решение по критериям задачи — это займёт около минуты.'}</span></Panel>:<>
+      <div className="grid-2" style={{alignItems:'stretch'}}>
+        <Panel><div className="stack-16">
+          <span className="cap">{passed?'Ваша категория':'Тест на категорию'}</span>
+          <div className="big-cat">{D.specLabel(f.spec)}<br/><span style={{color:'var(--accent-text)'}}>{D.gradeLabel(f.grade)}</span></div>
+          <div className="row-12"><Tag tone="neutral">ИИ-оценка</Tag><span className="hint">Эксперт может её скорректировать</span></div>
+        </div></Panel>
+        <Panel><ResultScore res={res} level={f.grade}/></Panel>
+      </div>
+      <ResultCheck res={res}/>
+      <Panel title="Разбор решения"><ResultRows res={res}/></Panel>
+      <p className="sub">{passed?'Профиль уже виден работодателям в категории. Следующая смена грейда — через 3 месяца.':annulled?'Тесты заморожены на 30 дней.':'Грейд не присвоен. Тест на уровень ниже можно пройти сразу, на этот же — через 30 дней.'}</p>
+    </>}
     <div><Button onClick={onDone} iconRight="→">Перейти в кабинет</Button></div>
   </div>;
 }

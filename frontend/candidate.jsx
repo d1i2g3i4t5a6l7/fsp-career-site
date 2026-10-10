@@ -47,7 +47,9 @@ function CandInvites({invites,setInvites,toast}){
   const [sel,setSel]=React.useState(mine[0]&&mine[0].id);
   const cur=mine.find(i=>i.id===sel)||mine[0];
   React.useEffect(()=>{if(cur&&cur.status==='sent')setInvites(v=>v.map(i=>i.id===cur.id?{...i,status:'viewed'}:i))},[cur&&cur.id]);
-  const act=(st)=>{setInvites(v=>v.map(i=>i.id===cur.id?{...i,status:st}:i));toast(st==='accepted'?'Приглашение принято — компания видит ваши контакты':'Приглашение отклонено')};
+  const [decl,setDecl]=React.useState(false);const [reason,setReason]=React.useState('');
+  React.useEffect(()=>{setDecl(false);setReason('')},[cur&&cur.id]);
+  const act=(st)=>{setInvites(v=>v.map(i=>i.id===cur.id?{...i,status:st,...(st==='declined'?{reason:reason.trim()}:{})}:i));toast(st==='accepted'?'Приглашение принято — компания видит ваши контакты':'Приглашение отклонено')};
   if(!mine.length) return <div className="page"><PageHead eyebrow="// входящие" title="Приглашения"/><Empty art="mail" title="Пока приглашений нет" text="Компании видят вашу категорию и сами выходят на связь с предложением и зарплатой."/></div>;
   return <div className="page">
     <PageHead eyebrow="// входящие" title="Приглашения" sub="Компания пишет первой и сразу называет зарплату. Ваши контакты откроются, только если вы примете приглашение."/>
@@ -60,9 +62,10 @@ function CandInvites({invites,setInvites,toast}){
           <div><span className="cap">Зарплата, на руки до НДФЛ</span><div className="salary">{D.rub(cur.from,cur.to)}</div></div>
           {cur.msg&&<blockquote className="quote">{cur.msg}</blockquote>}
           <div className="grid-2"><Kv k="Формат" v="Удалённо"/><Kv k="Связь" v={cur.status==='accepted'?cur.contact:'откроется после принятия'}/></div>
-          {(cur.status==='sent'||cur.status==='viewed')&&<div className="row-12"><Button onClick={()=>act('accepted')}>Принять</Button><Button variant="secondary" onClick={()=>act('declined')}>Отклонить</Button></div>}
+          {(cur.status==='sent'||cur.status==='viewed')&&!decl&&<div className="row-12"><Button onClick={()=>act('accepted')}>Принять</Button><Button variant="secondary" onClick={()=>setDecl(true)}>Отклонить</Button></div>}
+          {(cur.status==='sent'||cur.status==='viewed')&&decl&&<div className="stack-12"><Field label="Причина отказа" hint="Компания увидит её вместе со статусом"><Textarea rows={3} value={reason} onChange={e=>setReason(e.target.value)} placeholder="Например: вилка ниже ожиданий, не интересен домен"/></Field><div className="row-12"><Button variant="red" disabled={!reason.trim()} onClick={()=>act('declined')}>Отклонить</Button><Button variant="ghost" onClick={()=>setDecl(false)}>Отмена</Button></div></div>}
           {cur.status==='accepted'&&<div className="note ok">Вы приняли приглашение. Компания получила ваши контакты: почту и телефон из профиля.</div>}
-          {cur.status==='declined'&&<div className="note">Вы отклонили приглашение. Компания видит только статус, без причины.</div>}
+          {cur.status==='declined'&&<div className="note">{cur.reason?'Вы отклонили приглашение. Компания видит причину: «'+cur.reason+'».':'Вы отклонили приглашение.'}</div>}
         </div>
       </Panel>
     </div>
@@ -107,22 +110,34 @@ function CandVacancies({responses,setResponses,toast}){
   </div>;
 }
 
+const GRADE_IDS=['intern','junior','middle','senior'];
 function CandGrade({me}){
   const [modal,setModal]=React.useState(null);
   const [vibe,setVibe]=React.useState(null);
-  if(vibe==='run') return <VibeTest onExit={()=>setVibe(null)} onSubmit={s=>setVibe({stat:s})}/>;
-  if(vibe) return <VibeResult stat={vibe.stat} onExit={()=>setVibe(null)}/>;
+  // Грейд, доступные тесты и история — с бэкенда; пока их нет, показываем демо-профиль
+  const [st,setSt]=React.useState(null);const [hist,setHist]=React.useState([]);
+  const cat=D.specLabel(me.spec);
+  React.useEffect(()=>{if(vibe)return;WS.grade(cat).then(setSt).catch(()=>setSt(null));WS.history().then(setHist).catch(()=>setHist([]))},[vibe]);
+  if(vibe&&vibe.run) return <VibeTest category={cat} level={vibe.run} onExit={()=>setVibe(null)} onSubmit={id=>setVibe({attempt:id})}/>;
+  if(vibe) return <VibeResult attemptId={vibe.attempt} onExit={()=>setVibe(null)}/>;
+  const grade=st&&st.grade||me.grade;const gi=GRADE_IDS.indexOf(grade);
+  const up=GRADE_IDS[gi+1],down=gi>0?GRADE_IDS[gi-1]:null;
+  const why=l=>{const t=st&&st.tests.find(x=>x.level===l);return t&&!t.available?t.reason+(t.available_from?' (с '+fmtDate(t.available_from)+')':''):''};
+  const active=hist.find(a=>a.status==='active');
+  const story=[...hist].reverse().map(a=>({date:fmtDate(a.started_at),text:'Тест на '+D.gradeLabel(a.level)+' «'+a.task_title+'» — '+(a.status==='active'?'идёт':a.final?'ИИ '+a.ai_score+'/100'+(a.final.score!==a.ai_score?', после проверки эксперта '+a.final.score+'/100':'')+', '+(a.annulled?'аннулирован':a.final.passed?'пройден':'не пройден'):a.grading_status==='failed'?'проверка не удалась':'проверяется')+(a.tab_leaves?' · уходов со вкладки: '+a.tab_leaves:'')}));
   return <div className="page">
     <PageHead eyebrow="// грейд" title="Грейд и тесты"/>
     <div className="grid-2">
       <Panel title="Текущий статус"><div className="stack-16">
-        <div className="big-cat" style={{fontSize:36}}>{D.specLabel(me.spec)} · <span style={{color:'var(--accent-text)'}}>{D.gradeLabel(me.grade)}</span></div>
-        <Kv k="Отрасли" v="Финтех"/><Kv k="Тест" v={me.test+'/100 · подтверждён экспертом 09.07.2026'}/>
+        <div className="big-cat" style={{fontSize:36}}>{D.specLabel(me.spec)} · <span style={{color:'var(--accent-text)'}}>{D.gradeLabel(grade)}</span></div>
+        <Kv k="Отрасли" v="Финтех"/><Kv k="Тест" v={st&&st.grade?st.score+'/100 · подтверждён '+fmtDate(st.confirmed_at):me.test+'/100 · подтверждён экспертом 09.07.2026'}/>
       </div></Panel>
       <Panel title="Смена грейда"><div className="stack-16">
-        <div className="row-12"><Tag discipline="security">Доступно сейчас</Tag><span className="hint">раз в 3 месяца</span></div>
+        <div className="row-12">{st&&st.frozen_until?<Tag discipline="red">Тесты заморожены до {fmtDate(st.frozen_until)}</Tag>:st&&!st.change_available?<Tag>Доступно с {fmtDate(st.next_change_at)}</Tag>:<Tag discipline="security">Доступно сейчас</Tag>}<span className="hint">раз в 3 месяца</span></div>
         <div className="vibe-promo"><div className="row-12"><span className="beta">Тестовый режим</span><b style={{fontSize:14}}>Вайбкодинг с ИИ</b></div><span className="hint">Тест на повышение проходит вместе с ИИ-ассистентом: оцениваем, как вы ставите ему задачу и проверяете его код.</span></div>
-        <div className="row-12" style={{flexWrap:'wrap'}}><Button onClick={()=>setModal('up')}>Тест на Senior</Button><Button variant="secondary" onClick={()=>setModal('down')}>Тест на Junior</Button></div>
+        {active?<div><Button onClick={()=>setVibe({run:active.level})}>Вернуться к тесту на {D.gradeLabel(active.level)}</Button></div>
+        :<div className="row-12" style={{flexWrap:'wrap'}}>{up&&<Button onClick={()=>setModal('up')} disabled={!!why(up)}>Тест на {D.gradeLabel(up)}</Button>}{down&&<Button variant="secondary" onClick={()=>setModal('down')} disabled={!!why(down)}>Тест на {D.gradeLabel(down)}</Button>}</div>}
+        {!active&&(why(up)||why(down))&&<div className="hint">{up&&down&&why(up)===why(down)?why(up):[up&&why(up)&&D.gradeLabel(up)+': '+why(up),down&&why(down)&&D.gradeLabel(down)+': '+why(down)].filter(Boolean).join(' · ')}</div>}
       </div></Panel>
     </div>
     <Panel title="История опроса и тестов">
@@ -130,15 +145,15 @@ function CandGrade({me}){
         {date:'02.07.2026',text:'Опрос: Backend · Python, Go, PostgreSQL, Kafka, Docker · опыт 3 года'},
         {date:'02.07.2026',text:'Тест на Middle «Дедупликация платёжных событий» — ИИ 82/100'},
         {date:'09.07.2026',text:'Эксперт «Северный код» скорректировал оценку: 86/100 (граничные случаи по ts учтены частично)'},
-        {date:'09.07.2026',text:'Присвоена категория Backend · Middle'}]}/>
+        {date:'09.07.2026',text:'Присвоена категория Backend · Middle'},...story]}/>
     </Panel>
-    {modal==='up'&&<Modal title="Тест на Senior · вайбкодинг" onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button onClick={()=>{setModal(null);setVibe('run')}}>Начать, 60 минут</Button></>}>
+    {modal==='up'&&<Modal title={'Тест на '+D.gradeLabel(up)+' · вайбкодинг'} onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button onClick={()=>{setModal(null);setVibe({run:up})}}>Начать, 30 минут</Button></>}>
       <div className="stack-16"><div className="row-12"><span className="beta">Тестовый режим</span></div>
-      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Одна задача уровня Senior, 60 минут. Рядом с редактором — ИИ-ассистент: просите код, спорьте с ним, правьте вручную. Ассистент может ошибаться, и заметить это — часть проверки.</p>
-      <ul className="ul"><li>Все запросы к ассистенту и принятые правки попадают в отчёт</li><li>Итог подтверждает эксперт</li><li>При успехе грейд меняется, следующая смена — через 3 месяца</li></ul></div>
+      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Одна задача уровня {D.gradeLabel(up)}, 30 минут. Рядом с редактором — ИИ-ассистент: просите код, спорьте с ним, правьте вручную. Ассистент может ошибаться, и заметить это — часть проверки.</p>
+      <ul className="ul"><li>Все запросы к ассистенту и принятые правки попадают в отчёт</li><li>Итог выносит ИИ по критериям задачи, эксперт может его скорректировать</li><li>Уход со вкладки запрещён: он отмечается в результате, попытку могут аннулировать</li><li>При успехе грейд меняется, следующая смена — через 3 месяца</li></ul></div>
     </Modal>}
-    {modal==='down'&&<Modal title="Тест на Junior" onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button variant="red" onClick={()=>setModal(null)}>Понимаю, начать</Button></>}>
-      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Если пройдёте тест, категория сменится на Backend · Junior, и следующая смена будет доступна через 3 месяца. Текущий грейд принудительно не понижается — тест вы проходите по своему решению.</p>
+    {modal==='down'&&<Modal title={'Тест на '+D.gradeLabel(down)} onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button variant="red" onClick={()=>{setModal(null);setVibe({run:down})}}>Понимаю, начать</Button></>}>
+      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Если пройдёте тест, категория сменится на {D.specLabel(me.spec)} · {D.gradeLabel(down)}, и следующая смена будет доступна через 3 месяца. Текущий грейд принудительно не понижается — тест вы проходите по своему решению.</p>
     </Modal>}
   </div>;
 }

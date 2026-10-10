@@ -193,4 +193,4 @@ function PixelArt({name,px=4,style}){
   return <PxGrid rows={rows} px={px} style={style}/>;
 }
 function ArtHead({art,px=6,children}){return <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:24}}><div style={{minWidth:0}}>{children}</div><PixelArt name={art} px={px}/></div>}
-Object.assign(window,{PixelArt,ArtHead});
+Object.assign(window,{PixelArt,ArtHead,PX_ANIM,pxBlank});

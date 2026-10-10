@@ -60,7 +60,7 @@ function EmpInvites({invites,openCand}){
     <div className="panel" style={{overflowX:'auto'}}><table className="tbl">
       <thead><tr><th>Кандидат</th><th>Предложение</th><th>Зарплата</th><th>Дата</th><th>Статус</th><th>Контакты</th></tr></thead>
       <tbody>{rows.map(i=>{const c=D.CANDIDATES.find(x=>x.id===i.cand);return <tr key={i.id} onClick={()=>openCand(c)}>
-        <td><b>{c.name}</b><div className="hint">{D.catLabel(c)}</div></td><td>{i.title}</td><td className="salary-sm" style={{whiteSpace:'nowrap'}}>{D.rub(i.from,i.to)}</td><td className="hint">{i.date}</td><td><Status s={i.status}/></td>
+        <td><b>{c.name}</b><div className="hint">{D.catLabel(c)}</div></td><td>{i.title}</td><td className="salary-sm" style={{whiteSpace:'nowrap'}}>{D.rub(i.from,i.to)}</td><td className="hint">{i.date}</td><td><Status s={i.status}/>{i.reason&&<div className="hint" style={{marginTop:6}}>{i.reason}</div>}</td>
         <td style={{fontSize:13}}>{i.status==='accepted'?(c.id==='me'?'a.korneev@mail.ru':c.id+'@mail.ru'):<span className="hint">скрыты</span>}</td></tr>})}</tbody></table></div>
   </div>;
 }
@@ -92,31 +92,62 @@ function EmpVacancies({openCand,toast}){
   </div>;
 }
 
-function EmpReview({toast}){
-  const queue=[{c:'k4410',ai:74},{c:'k0954',ai:79},{c:'k5133',ai:77}];
-  const [i,setI]=React.useState(0);const [scores,setScores]=React.useState(D.AI_EVAL.map(e=>e.v));const [done,setDone]=React.useState([]);
-  const cur=queue[i];const c=D.CANDIDATES.find(x=>x.id===cur.c);
-  const total=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
-  const finish=(ok)=>{setDone(d=>[...d,cur.c]);toast(ok?'Оценка подтверждена':'Оценка скорректирована: '+total);setI((i+1)%queue.length);setScores(D.AI_EVAL.map(e=>e.v))};
+// Проверка оценок: очередь сданных тестов с бэкенда — решение, журнал и отчёт ИИ по критериям.
+// Инженер подтверждает оценку ИИ, исправляет вердикты или аннулирует попытку — например, за уход со вкладки
+const REVIEW_V=[['yes','Да'],['partial','Частично'],['no','Нет']];
+const reviewName=id=>(id||'').startsWith('me')?D.CANDIDATES.find(c=>c.id==='me').name:id;
+const reviewTime=iso=>iso?new Date(iso).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'';
+function EmpReview({toast,onQueue}){
+  const [queue,setQueue]=React.useState(null);const [err,setErr]=React.useState('');
+  const [sel,setSel]=React.useState(null);const [att,setAtt]=React.useState(null);const [res,setRes]=React.useState(null);
+  const [file,setFile]=React.useState('');const [fix,setFix]=React.useState({});const [note,setNote]=React.useState('');const [busy,setBusy]=React.useState(false);
+  const load=()=>WS.reviews().then(q=>{setQueue(q);setErr('');if(onQueue)onQueue(q);return q}).catch(e=>{setErr(e.message);return []});
+  React.useEffect(()=>{load().then(q=>setSel(q[0]?q[0].attempt_id:null))},[]);
+  React.useEffect(()=>{if(!sel)return;setAtt(null);setRes(null);setFix({});setNote('');
+    Promise.all([WS.attempt(sel),WS.result(sel)]).then(([a,r])=>{setAtt(a);setRes(r);
+      setFile(Object.keys(a.files).filter(p=>p!==VIBE_RUNNER).sort((x,y)=>isTestFile(x)-isTestFile(y)||x.localeCompare(y))[0]||'')}).catch(e=>setErr(e.message))},[sel]);
+  const red={borderColor:'var(--fsp-red)',color:'var(--fg-1)'};
+  const crit=res&&res.criteria||[];
+  const verdictOf=c=>fix[c.id]||c.verdict;
+  const earned=(c,v)=>v==='yes'?c.points:v==='partial'?(c.partial_points||0):0;
+  const max=crit.reduce((a,c)=>a+c.points,0);
+  const total=max?Math.floor((100*crit.reduce((a,c)=>a+earned(c,verdictOf(c)),0)+max-1)/max):0;
+  const changed=Object.entries(fix).filter(([id,v])=>{const c=crit.find(x=>x.id===id);return c&&v!==c.verdict});
+  const decide=async annul=>{setBusy(true);
+    try{const body={reviewer:D.COMPANY.name,annul,comment:note.trim()};if(!annul&&changed.length)body.verdicts=Object.fromEntries(changed);
+      await WS.review(sel,body);toast(annul?'Попытка аннулирована':changed.length?'Оценка исправлена: '+total:'Оценка подтверждена');
+      const q=await load();const next=q.find(x=>!x.review&&x.attempt_id!==sel);if(next)setSel(next.attempt_id);else{setRes(await WS.result(sel));setFix({})}}
+    catch(e){toast(e.message)}setBusy(false)};
+  const open=res&&!res.review;
+  const v=res&&res.violations||{count:0,away_s:0};
+  const names=att?Object.keys(att.files).filter(p=>p!==VIBE_RUNNER).sort((x,y)=>isTestFile(x)-isTestFile(y)||x.localeCompare(y)):[];
+  const took=att&&att.submitted_at?Math.max(0,Math.round((new Date(att.submitted_at)-new Date(att.started_at))/1000)):0;
   return <div className="page">
-    <PageHead eyebrow="// экспертиза" title="Проверка оценок ИИ" sub="Инженер компании проверяет решение и подтверждает или корректирует оценку ИИ. Только после этого тест получает статус «Подтверждено»."/>
-    <div className="row-12">{queue.map((q,k)=><Chip key={q.c} on={k===i} onClick={()=>setI(k)} small>{D.CANDIDATES.find(x=>x.id===q.c).name}{done.includes(q.c)?' ✓':''}</Chip>)}</div>
-    <div className="test-grid">
+    <PageHead eyebrow="// экспертиза" title="Проверка оценок ИИ" sub="ИИ выносит итог по критериям задачи. Инженер компании может его проверить: подтвердить, исправить вердикты или аннулировать попытку — например, за уход со вкладки."/>
+    {err&&<div className="note" role="alert" style={red}>{err}</div>}
+    {queue&&!queue.length&&<Empty art="search" title="Пока нечего проверять" text="Здесь появятся решения кандидатов, когда ИИ их оценит."/>}
+    {queue&&queue.length>0&&<div className="row-12" style={{flexWrap:'wrap'}}>{queue.map(q=><Chip key={q.attempt_id} on={q.attempt_id===sel} onClick={()=>setSel(q.attempt_id)} small>{reviewName(q.candidate_id)} · {D.gradeLabel(q.level)} · {reviewTime(q.submitted_at)}{q.violations.count?' · уход со вкладки':''}{q.review?' ✓':''}</Chip>)}</div>}
+    {att&&res&&<div className="test-grid">
       <section className="panel editor">
-        <div className="panel-h"><div><div className="eyebrow">{D.catLabel(c)} · вариант #B2-9C4</div><div className="panel-t">{D.TASK.title}</div></div><span className="hint">решено за 31:40</span></div>
-        <pre className="code-big">{D.TASK.code}</pre>
-        <div className="ed-f"><span className="hint">Журнал: 0 вставок из буфера · 1 уход со вкладки (12 с) · 4 запуска тестов</span></div>
+        <div className="panel-h"><div><div className="eyebrow">{att.category} · {D.gradeLabel(att.level)} · вариант #{att.task.id}</div><div className="panel-t">{att.task.title}</div></div><span className="hint">решено за {String(Math.floor(took/60)).padStart(2,'0')}:{String(took%60).padStart(2,'0')}</span></div>
+        <div className="row-12" style={{padding:'12px 16px 0',flexWrap:'wrap'}}>{names.map(p=><span key={p} className={'tab'+(p===file?' on':'')} style={{cursor:'pointer'}} onClick={()=>setFile(p)}>{p}</span>)}</div>
+        <pre className="code-big">{att.files[file]||''}</pre>
+        <div className="ed-f"><span className="hint">Журнал: {att.stats.assistant_requests} запросов к ассистенту · правок принято {att.stats.edits_accepted}, отклонено {att.stats.edits_rejected} · {att.stats.test_runs} запусков тестов · уходов со вкладки: {v.count}{v.away_s?' ('+v.away_s+' с)':''}</span></div>
       </section>
       <Panel title="Оценка"><div className="stack-16">
-        {D.AI_EVAL.map((e,k)=><div key={e.k} className="stack-8">
-          <div className="row-12" style={{justifyContent:'space-between'}}><b style={{fontSize:13}}>{e.k}</b><span className="hint">ИИ {e.v} → <b style={{color:scores[k]!==e.v?'var(--fsp-red)':'var(--fg-1)'}}>{scores[k]}</b></span></div>
-          <input type="range" min="0" max="100" value={scores[k]} onChange={ev=>setScores(s=>s.map((x,j)=>j===k?+ev.target.value:x))}/>
-          <span className="hint">{e.note}</span></div>)}
-        <div className="row-12" style={{justifyContent:'space-between',borderTop:'1px solid var(--border-1)',paddingTop:16}}><span className="cap">Итог</span><span className="pix" style={{fontSize:40}}>{total}</span></div>
-        <Textarea rows={3} placeholder="Комментарий кандидату (необязательно)"/>
-        <div className="row-12"><Button onClick={()=>finish(true)}>Подтвердить</Button><Button variant="secondary" onClick={()=>finish(false)}>Сохранить правку</Button></div>
+        {v.count>0&&open&&<div className="note" style={red}>Уход со вкладки: {v.count} {times(v.count)}. Попытка помечена — засчитайте её или аннулируйте.</div>}
+        {crit.map(c=>{const cv=verdictOf(c),ai=c.ai_verdict||c.verdict,auto=c.check==='tests';return <div key={c.id} className="stack-8">
+          <div className="row-12" style={{justifyContent:'space-between',alignItems:'flex-start'}}><b style={{fontSize:13}}>{c.text}</b><span className="hint" style={{whiteSpace:'nowrap'}}>ИИ {VERDICT[ai]} → <b style={{color:cv!==ai?'var(--fsp-red)':'var(--fg-1)'}}>{earned(c,cv)}/{c.points}</b></span></div>
+          {open&&!auto&&<div className="chips">{REVIEW_V.filter(([k])=>k!=='partial'||c.partial_points!=null).map(([k,l])=><Chip key={k} small on={cv===k} onClick={()=>setFix(f=>({...f,[c.id]:k}))}>{l}</Chip>)}</div>}
+          <span className="hint">{auto?'Засчитывается по автотестам. ':c.check==='verified'?'Засчитывается по журналу действий. ':''}{c.comment}{quote(c.evidence)}{c.unconfirmed?' · судья ставил «'+VERDICT[(c.said||[]).find(x=>x!=='no')]+'», но его цитата не нашлась в материалах ('+c.unconfirmed+' из '+(c.said||[]).length+')':''}{c.corrected?' · исправлено: ИИ — '+VERDICT[c.ai_verdict]:''}</span>
+        </div>})}
+        <div className="row-12" style={{justifyContent:'space-between',borderTop:'1px solid var(--border-1)',paddingTop:16}}><span className="cap">Итог</span><span className="row-12">{total!==res.ai_score&&<span className="hint">ИИ {res.ai_score} →</span>}<span className="pix" style={{fontSize:40}}>{total}</span></span></div>
+        {open?<>
+          <Textarea rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Комментарий кандидату (необязательно)"/>
+          <div className="row-12" style={{flexWrap:'wrap'}}><Button disabled={busy||changed.length>0} onClick={()=>decide(false)}>Подтвердить</Button><Button variant="secondary" disabled={busy||!changed.length} onClick={()=>decide(false)}>Сохранить правку</Button><Button variant="red" disabled={busy} onClick={()=>decide(true)}>Аннулировать</Button></div>
+        </>:<div className="note" style={res.review.annulled?red:undefined}>{res.review.annulled?'Попытка аннулирована':res.correction?'Оценка исправлена: ИИ '+res.ai_score+' → '+res.correction.score:'Оценка ИИ подтверждена'} · {res.review.reviewer}, {fmtDate(res.review.at)}{res.review.comment?' — '+res.review.comment:''}</div>}
       </div></Panel>
-    </div>
+    </div>}
   </div>;
 }
 

@@ -6,8 +6,8 @@ const WEIGHTS=[
  ['Активность',10,'var(--disc-uas)','Как давно решали регулярное задание'],
  ['Эксперт',5,'var(--disc-security)','Оценку ИИ подтвердил инженер']];
 const FLOW=[
- ['</>','Решаете задачу','40 минут лайвкодинга. Условие собрано из реальных вакансий вашей категории.'],
- ['{•}','Получаете категорию','ИИ оценивает сразу, эксперт подтверждает. Например, Backend · Middle, 2 место из 38.'],
+ ['</>','Решаете задачу','30 минут вместе с ИИ-ассистентом. Условие собрано из реальных вакансий вашей категории.'],
+ ['{•}','Получаете категорию','ИИ оценивает сразу, эксперт при необходимости поправит. Например, Backend · Middle, 2 место из 38.'],
  ['→','Компания пишет первой','Приглашение приходит сразу с вилкой зарплаты. Без зарплаты его не отправить.'],
  ['✓','Вы решаете','Контакты открываются только после вашего «принять».']];
 const VERSUS=[
@@ -57,13 +57,13 @@ function Landing({go,onReset}){
         <div className="lp-hero-txt">
           <span className="lp-kicker"><i></i>Федерация спортивного программирования · подбор ИТ-специалистов</span>
           <h1 className="lp-title">Пишете код.<br/><span className="lp-hl">Работодатели пишут вам.</span></h1>
-          <p className="land-lead">Один тест на 40 минут вместо сотни откликов. Компании сами приходят с предложением, и зарплата указана сразу.</p>
+          <p className="land-lead">Один тест на 30 минут вместо сотни откликов. Компании сами приходят с предложением, и зарплата указана сразу.</p>
           <div className="row-12" style={{flexWrap:'wrap'}}>
             <Button size="lg" onClick={()=>go('signup')} iconRight="→">Пройти тест на грейд</Button>
             <Button size="lg" variant="secondary" onClick={()=>go('login-employer')}>Я нанимаю</Button>
           </div>
           <ul className="lp-proof">
-            <li><b className="pix">40</b><span>минут на тест</span></li>
+            <li><b className="pix">30</b><span>минут на тест</span></li>
             <li><b className="pix">₽</b><span>зарплата в приглашении</span></li>
             <li><b className="pix">0</b><span>контактов без согласия</span></li>
           </ul>
@@ -123,7 +123,7 @@ function Landing({go,onReset}){
         <div className="lp-final-in">
           <PixelArt name="result" px={6}/>
           <div className="stack-16" style={{minWidth:0}}>
-            <h2>Следующий оффер начинается с 40 минут кода</h2>
+            <h2>Следующий оффер начинается с 30 минут кода</h2>
             <div className="row-12" style={{flexWrap:'wrap'}}>
               <Button size="lg" onClick={()=>go('signup')} iconRight="→" style={{background:'var(--fsp-white)',color:'var(--fsp-black)'}}>Начать тест</Button>
               <Button size="lg" variant="secondary" onClick={()=>go('login')}>У меня уже есть аккаунт</Button>

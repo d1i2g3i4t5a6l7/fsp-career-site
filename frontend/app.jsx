@@ -1,36 +1,3 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="assets/fsp-mark-dark.png">
-<title>ФСП Карьера</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500;700&family=Pixelify+Sans:wght@400;700&display=swap">
-<link rel="stylesheet" href="ds/styles.css">
-<link rel="stylesheet" href="app.css">
-<style>
-#boot{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:12px;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;font-size:13px;color:#9B9C9E;background:#1B1C21}
-#boot b{color:#8F86FF}
-</style>
-</head>
-<body style="margin:0">
-<div id="root"><div id="boot"><b>{•}</b> ФСП Карьера загружается…</div></div>
-
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
-<script src="ds/_ds_bundle.js"></script>
-<script src="data.js"></script>
-<script type="text/babel" src="pixel.jsx"></script>
-<script type="text/babel" src="ui.jsx"></script>
-<script type="text/babel" src="onboarding.jsx"></script>
-<script type="text/babel" src="vibe.jsx"></script>
-<script type="text/babel" src="candidate.jsx"></script>
-<script type="text/babel" src="shortlist.jsx"></script>
-<script type="text/babel" src="employer.jsx"></script>
-<script type="text/babel" src="landing-art.jsx"></script>
-<script type="text/babel" src="landing.jsx"></script>
-<script type="text/babel">
 // Адреса страниц: #home, #signup, #signup-3, #c-invites, #e-shortlist …
 const LS='fspk_site_v1';
 const C_PAGES=['home','grade','resume','invites','tasks','vacancies','settings'];
@@ -63,6 +30,9 @@ function App(){
   const [stars,setStars]=React.useState(saved.stars||['k2041']);
   const [drawer,setDrawer]=React.useState(null);const [inv,setInv]=React.useState(null);
   const [msg,setMsg]=React.useState('');
+  const [reviewN,setReviewN]=React.useState(0);
+  const countReview=q=>setReviewN(q.filter(x=>x.needs_review).length);
+  React.useEffect(()=>{if(route.view==='employer')WS.reviews().then(countReview).catch(()=>{})},[route.view,route.page]);
   React.useEffect(()=>{try{localStorage.setItem(LS,JSON.stringify({hasFsp,invites,responses,need,stars}))}catch(e){}},[hasFsp,invites,responses,need,stars]);
   React.useEffect(()=>{setDrawer(null);setInv(null)},[route.view,route.page]);
   const toast=m=>{setMsg(m);clearTimeout(window.__tt);window.__tt=setTimeout(()=>setMsg(''),2600)};
@@ -71,10 +41,10 @@ function App(){
   const toggleStar=id=>setStars(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
   const today=new Date().toLocaleDateString('ru-RU');
   const send=f=>{const c=inv;setInvites(v=>[{id:'i'+Date.now(),cand:c.id,company:D.COMPANY.name,title:f.title,from:f.from,to:f.to,status:'sent',date:today,contact:f.contact,msg:f.msg},...v]);setInv(null);toast('Приглашение отправлено: '+c.name+(c.id==='me'?' — откройте кабинет кандидата, чтобы увидеть его':''))};
-  const reset=()=>{setInvites(D.INVITES);setResponses(D.RESPONSES);setNeed(D.NEED);setStars(['k2041']);setHasFsp(true);try{localStorage.removeItem('fspk_view')}catch(e){}toast('Данные сброшены')};
+  const reset=()=>{setInvites(D.INVITES);setResponses(D.RESPONSES);setNeed(D.NEED);setStars(['k2041']);setHasFsp(true);try{localStorage.removeItem('fspk_view');localStorage.removeItem('fspk_cand')}catch(e){}toast('Данные сброшены')};
   const newInv=invites.filter(i=>i.cand==='me'&&i.status==='sent').length;
   const cNav=[{sep:'Профиль'},{id:'home',g:'{•}',label:'Профиль и категория'},{id:'grade',g:'▲',label:'Грейд и тесты'},{id:'resume',g:'[ ]',label:'Резюме'},{sep:'Работа'},{id:'invites',g:'→',label:'Приглашения',badge:newInv},{id:'tasks',g:'</>',label:'Задания',badge:2},{id:'vacancies',g:'//',label:'Вакансии'},{sep:'Аккаунт'},{id:'settings',g:'⚙',label:'Настройки'}];
-  const eNav=[{sep:'Подбор'},{id:'need',g:'{•}',label:'Потребность'},{id:'shortlist',g:'▲',label:'Подборка'},{id:'bank',g:'[ ]',label:'Банк кандидатов'},{id:'invites',g:'→',label:'Приглашения'},{sep:'Найм'},{id:'vacancies',g:'//',label:'Вакансии',badge:1},{id:'review',g:'>|<',label:'Проверка оценок',badge:3},{sep:'Компания'},{id:'company',g:'⚙',label:'Профиль компании'}];
+  const eNav=[{sep:'Подбор'},{id:'need',g:'{•}',label:'Потребность'},{id:'shortlist',g:'▲',label:'Подборка'},{id:'bank',g:'[ ]',label:'Банк кандидатов'},{id:'invites',g:'→',label:'Приглашения'},{sep:'Найм'},{id:'vacancies',g:'//',label:'Вакансии',badge:1},{id:'review',g:'>|<',label:'Проверка оценок',badge:reviewN},{sep:'Компания'},{id:'company',g:'⚙',label:'Профиль компании'}];
   const goE=p=>go('e-'+p),goC=p=>go('c-'+p);
   const empProps={need,invites,openCand:c=>setDrawer(fixC(c)),openInvite:c=>setInv(fixC(c)),stars,toggleStar,hasFsp,toast,go:goE};
   const setRole=r=>go(r==='candidate'?'c-home':'e-shortlist');
@@ -88,7 +58,7 @@ function App(){
     content=<Shell role={route.view} setRole={setRole} nav={isC?cNav:eNav} page={route.page} setPage={isC?goC:goE} onHome={()=>go('home')}
       user={isC?{initials:'АК',name:'Алексей Корнеев',sub:'Backend · Middle'}:{initials:'ИВ',name:'Ирина Волкова',sub:'HR · Северный код'}}>
       {isC?({home:<CandHome me={me} invites={invites} go={goC}/>,invites:<CandInvites invites={invites} setInvites={setInvites} toast={toast}/>,tasks:<CandTasks toast={toast}/>,vacancies:<CandVacancies responses={responses} setResponses={setResponses} toast={toast}/>,grade:<CandGrade me={me}/>,resume:<CandResume me={me} toast={toast}/>,settings:<CandSettings hasFsp={hasFsp} setHasFsp={setHasFsp}/>}[route.page])
-      :({need:<EmpNeed need={need} setNeed={setNeed} go={goE} toast={toast}/>,shortlist:<Shortlist {...empProps}/>,bank:<EmpBank {...empProps}/>,invites:<EmpInvites invites={invites} openCand={empProps.openCand}/>,vacancies:<EmpVacancies openCand={empProps.openCand} toast={toast}/>,review:<EmpReview toast={toast}/>,company:<EmpCompany toast={toast}/>}[route.page])}
+      :({need:<EmpNeed need={need} setNeed={setNeed} go={goE} toast={toast}/>,shortlist:<Shortlist {...empProps}/>,bank:<EmpBank {...empProps}/>,invites:<EmpInvites invites={invites} openCand={empProps.openCand}/>,vacancies:<EmpVacancies openCand={empProps.openCand} toast={toast}/>,review:<EmpReview toast={toast} onQueue={countReview}/>,company:<EmpCompany toast={toast}/>}[route.page])}
     </Shell>;
   }
   return <>
@@ -99,20 +69,3 @@ function App(){
   </>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
-</script>
-<script>
-(function(){
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  document.addEventListener('pointerdown',function(e){
-    var el=e.target.closest('button,.chip,.grade-card,.dossier');if(!el||el.disabled)return;
-    var r=el.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,s=Math.max(r.width,r.height)*2.2;
-    if(getComputedStyle(el).position==='static')el.style.position='relative';
-    el.style.overflow='hidden';
-    var ring=document.createElement('span');ring.className='mx-ring';ring.style.cssText='left:'+x+'px;top:'+y+'px;width:'+s+'px;height:'+s+'px';el.appendChild(ring);
-    if(r.width>90&&r.height>30)for(var i=0;i<6;i++){var p=document.createElement('span');p.className='mx-px';var a=i/6*Math.PI*2,d=14+Math.random()*10;p.style.cssText='left:'+(x-2)+'px;top:'+(y-2)+'px;--dx:'+Math.round(Math.cos(a)*d/4)*4+'px;--dy:'+Math.round(Math.sin(a)*d/4)*4+'px';el.appendChild(p);setTimeout(p.remove.bind(p),420)}
-    setTimeout(function(){ring.remove()},460);
-  },true);
-})();
-</script>
-</body>
-</html>

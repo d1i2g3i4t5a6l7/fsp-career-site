@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="assets/fsp-mark-dark.png">
+<title>ФСП Карьера</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500;700&family=Pixelify+Sans:wght@400;700&display=swap">
+<link rel="stylesheet" href="ds/styles.css">
+<link rel="stylesheet" href="app.css">
+<style>
+#boot{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:12px;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;font-size:13px;color:#9B9C9E;background:#1B1C21}
+#boot b{color:#8F86FF}
+</style>
+</head>
+<body style="margin:0">
+<div id="root"><div id="boot"><b>{•}</b> ФСП Карьера загружается…</div></div>
+
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="ds/_ds_bundle.js"></script>
+<script src="data.js"></script>
+<script type="module" src="/main.jsx"></script>
+<script>
+(function(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  document.addEventListener('pointerdown',function(e){
+    var el=e.target.closest('button,.chip,.grade-card,.dossier');if(!el||el.disabled)return;
+    var r=el.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,s=Math.max(r.width,r.height)*2.2;
+    if(getComputedStyle(el).position==='static')el.style.position='relative';
+    el.style.overflow='hidden';
+    var ring=document.createElement('span');ring.className='mx-ring';ring.style.cssText='left:'+x+'px;top:'+y+'px;width:'+s+'px;height:'+s+'px';el.appendChild(ring);
+    if(r.width>90&&r.height>30)for(var i=0;i<6;i++){var p=document.createElement('span');p.className='mx-px';var a=i/6*Math.PI*2,d=14+Math.random()*10;p.style.cssText='left:'+(x-2)+'px;top:'+(y-2)+'px;--dx:'+Math.round(Math.cos(a)*d/4)*4+'px;--dy:'+Math.round(Math.sin(a)*d/4)*4+'px';el.appendChild(p);setTimeout(p.remove.bind(p),420)}
+    setTimeout(function(){ring.remove()},460);
+  },true);
+})();
+</script>
+</body>
+</html>
