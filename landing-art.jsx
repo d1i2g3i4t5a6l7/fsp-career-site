@@ -46,4 +46,41 @@
     return a.map(r=>r.join(''));
   };
   PX_ANIM.offer={fps:5,frames:[bubble(0),bubble(1),bubble(2),bubble(0),bubble(1),bubble(2),bubble(3,1),bubble(3,1),bubble(3,0),bubble(3,1),bubble(3,0),bubble(3,1),bubble(3,1),bubble(3,1)]};
+
+  // «Пишете код»: программист за ноутбуком печатает, кусочки кода всплывают вверх.
+  const coder=(k)=>{
+    const W=20,H=18,a=pxBlank(W,H).map(r=>[...r]);
+    const put=(x,y,c)=>{if(a[y]&&x>=0&&x<W)a[y][x]=c};
+    const rect=(x0,y0,x1,y1,c)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)put(x,y,c)};
+    rect(8,6,11,9,'w');put(9,8,'k');put(10,8,'k');rect(8,6,11,6,'g');     // голова, волосы, глаза
+    rect(6,10,13,13,'b');                                                  // худи
+    rect(4,11,15,15,'l');rect(9,13,10,13,'r');                             // крышка ноутбука с меткой
+    rect(2,16,17,16,'g');                                                  // основание
+    const up=k%2;put(5,15-up,'w');put(14,14+up,'w');                       // руки печатают по очереди
+    // всплывающие кусочки кода: [x, цвет, длина, фаза]
+    [[3,'p',3,0],[8,'G',2,2],[13,'b',3,4],[16,'p',2,1]].forEach(([x,c,len,ph])=>{
+      const t=(k+ph)%6;const y=5-t;if(y<0)return;
+      for(let i=0;i<len;i++)put(x+i,y,t>=4?'g':c);
+    });
+    return a.map(r=>r.join(''));
+  };
+  PX_ANIM.coder={fps:5,frames:Array.from({length:12},(_,k)=>coder(k))};
+
+  // «Работодатели пишут вам»: из офиса вылетает письмо, летит по дуге и приземляется с уведомлением.
+  const ENV=['wwwwwww','wbwwwbw','wwbwbww','wwwbwww','wwwwwww'];
+  const PATH=[[2,9],[6,6],[10,4],[14,5],[16,8],[16,11],[16,11],[16,11],[16,11],[16,11]];
+  const hire=(k)=>{
+    const W=24,H=18,a=pxBlank(W,H).map(r=>[...r]);
+    const put=(x,y,c)=>{if(a[y]&&x>=0&&x<W)a[y][x]=c};
+    for(let y=3;y<=17;y++)for(let x=0;x<=8;x++)put(x,y,(x===0||x===8||y===3)?'g':'k');   // здание
+    put(4,1,'r');put(4,2,'g');                                                             // антенна
+    for(let r=0;r<5;r++)[2,5].forEach((x,c)=>{const lit=(r*2+c+k)%4===0;put(x,5+r*2,lit?'y':'B');put(x+1,5+r*2,lit?'y':'B')}); // окна, по очереди загораются
+    for(let x=3;x<=5;x++)for(let y=15;y<=17;y++)put(x,y,'l');                              // дверь
+    const step=k%PATH.length;const [ex,ey]=PATH[step];
+    ENV.forEach((row,dy)=>[...row].forEach((c,dx)=>put(ex+dx,ey+dy,c)));
+    if(step>=5&&step%2===1){put(ex+6,ey-1,'r');put(ex+7,ey-1,'r');put(ex+6,ey,'r');put(ex+7,ey,'r')} // уведомление
+    if(step>=6)[[ex+2,ey+6],[ex+3,ey+6],[ex+4,ey+6]].forEach(([x,y])=>put(x,y,'G'));        // «принято»
+    return a.map(r=>r.join(''));
+  };
+  PX_ANIM.hire={fps:5,frames:Array.from({length:PATH.length},(_,k)=>hire(k))};
 })();

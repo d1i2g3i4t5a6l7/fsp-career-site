@@ -32,9 +32,9 @@ const FAQ=[
 
 // Две пиксельные анимации без рамок: рост в рейтинге и приглашение с зарплатой.
 function MatchMachine(){
-  return <div className="mm2" role="img" aria-label="Ваша строка поднимается в рейтинге категории, и компания присылает приглашение с зарплатой">
-    <PixelArt name="climb" px={14}/>
-    <PixelArt name="offer" px={12}/>
+  return <div className="mm2" role="img" aria-label="Программист пишет код за ноутбуком, из офиса компании к нему летит письмо-приглашение">
+    <PixelArt name="coder" px={13}/>
+    <PixelArt name="hire" px={12}/>
   </div>;
 }
 
