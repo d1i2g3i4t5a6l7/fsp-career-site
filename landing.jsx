@@ -60,22 +60,19 @@ function MatchMachine(){
   const on=n=>ph>=n?' on':'';
   const mm=String(Math.floor(left/60)).padStart(2,'0'),ss=String(left%60).padStart(2,'0');
   return <div className="mm" aria-label="Как работает ФСП Карьера: решение, оценка, категория, приглашение" role="img">
-    <div className="mm-bot"><PixelArt name="bot" px={5}/></div>
     <div className="mm-win">
-      <div className="mm-bar"><span className="tab on">solution.py</span><span className="mm-state">{ph<1?'лайвкодинг':ph<2?'отправлено ✓':'проверено'}</span><span className="mm-timer">{mm}:{ss}</span></div>
+      <div className="mm-bar"><PixelArt name="bot" px={2}/><span className="tab on">solution.py</span><span className="mm-state">{ph<1?'лайвкодинг':ph<2?'отправлено ✓':'проверено'}</span><span className="mm-timer">{mm}:{ss}</span></div>
       <pre className="mm-code" key={loop}>{CODE_LINES.map((ln,i)=><div key={i} className="mm-ln" style={{animationDelay:(reduce?0:i*300)+'ms'}}><span className="mm-no">{i+1}</span>{ln.map(([c,t],j)=><span key={j} className={'c-'+c}>{t}</span>)}</div>)}</pre>
       <div className={'mm-eval'+on(2)}>
         <div className="mm-eval-l">{EVAL.map(([k,v],i)=><div key={k} className="mm-row"><span>{k}</span><div className="bar6"><div style={{width:ph>=2?v+'%':'0%',background:v<70?'var(--warning)':'var(--accent)',transitionDelay:i*120+'ms'}}></div></div></div>)}</div>
         <div className="mm-score"><span className="cap">оценка ИИ</span><span className="pix">{score}</span></div>
       </div>
+      <div className={'mm-cat'+on(3)}><span className="cap">категория</span><b>Backend · <span>Middle</span></b><span className="mm-rank">2 из 38 · эксперт ✓</span></div>
     </div>
-    <div className={'mm-cat'+on(3)}><span className="cap">категория</span><b>BACKEND · <span>MIDDLE</span></b><span className="mm-rank">2/38 · эксперт ✓</span></div>
     <div className={'mm-inv'+on(4)+(ph>=5?' acc':'')}>
-      <div className="row-12" style={{justifyContent:'space-between'}}><span className="cap">приглашение · Северный код</span><span className="mm-new">{ph>=5?'принято':'новое'}</span></div>
-      <b className="mm-inv-t">Backend-разработчик в команду платформы</b>
-      <span className="mm-sal">230 000 – 270 000 ₽</span>
-      <div className="row-12"><span className={'fake-btn'+(ph>=5?' done':'')}>{ph>=5?'✓ Принято':'Принять'}</span><span className="fake-btn ghost">Отклонить</span></div>
-      <div className={'mm-contacts'+on(5)}>контакты открыты компании · a.korneev@mail.ru</div>
+      <div className="mm-inv-top"><span className="cap">Северный код</span><span className="mm-new">{ph>=5?'принято':'новое приглашение'}</span></div>
+      <div className="mm-inv-mid"><b className="mm-inv-t">Backend-разработчик</b><span className="mm-sal">230–270 тыс. ₽</span></div>
+      <div className={'mm-contacts'+on(5)}>✓ контакты открыты компании</div>
     </div>
   </div>;
 }
@@ -98,16 +95,16 @@ function Landing({go,onReset}){
       <section className="lp-hero">
         <div className="lp-hero-txt">
           <span className="lp-kicker"><i></i>Федерация спортивного программирования · подбор ИТ-специалистов</span>
-          <h1 className="lp-title">Пишете код —<br/><span className="lp-hl">работодатели</span><br/>пишут вам</h1>
-          <p className="land-lead">Один тест на 40 минут вместо сотни откликов. Подтвердите грейд, получите категорию — и компании сами придут с предложением, где зарплата указана в первом же сообщении.</p>
+          <h1 className="lp-title">Пишете код.<br/><span className="lp-hl">Работодатели пишут вам.</span></h1>
+          <p className="land-lead">Один тест на 40 минут вместо сотни откликов. Компании сами приходят с предложением, и зарплата указана сразу.</p>
           <div className="row-12" style={{flexWrap:'wrap'}}>
             <Button size="lg" onClick={()=>go('signup')} iconRight="→">Пройти тест на грейд</Button>
             <Button size="lg" variant="secondary" onClick={()=>go('login-employer')}>Я нанимаю</Button>
           </div>
           <ul className="lp-proof">
-            <li><b className="pix">40</b><span>минут — один тест<br/>вместо резюме</span></li>
-            <li><b className="pix">₽</b><span>зарплата в каждом<br/>приглашении</span></li>
-            <li><b className="pix">0</b><span>контактов до вашего<br/>согласия</span></li>
+            <li><b className="pix">40</b><span>минут на тест</span></li>
+            <li><b className="pix">₽</b><span>зарплата в приглашении</span></li>
+            <li><b className="pix">0</b><span>контактов без согласия</span></li>
           </ul>
         </div>
         <MatchMachine/>
