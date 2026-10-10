@@ -83,4 +83,40 @@
     return a.map(r=>r.join(''));
   };
   PX_ANIM.hire={fps:5,frames:Array.from({length:PATH.length},(_,k)=>hire(k))};
+
+  // Найм: рукопожатие кандидата (синий рукав ФСП) и компании (серый рукав), с искрами.
+  const shake=(off,dy,spark)=>{
+    const W=22,H=13,a=pxBlank(W,H).map(r=>[...r]);
+    const put=(x,y,c)=>{if(a[y]&&x>=0&&x<W)a[y][x]=c};
+    const rect=(x0,y0,x1,y1,c)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)put(x,y,c)};
+    const y0=6+dy;
+    rect(0,y0,3,y0+3,'b');rect(4,y0,4,y0+3,'p');            // рукав кандидата и манжета
+    rect(18,y0,21,y0+3,'l');rect(17,y0,17,y0+3,'g');         // рукав компании и манжета
+    rect(5,y0,7+off,y0+3,'w');put(6+off,y0-1,'w');           // рука кандидата и большой палец
+    rect(14-off,y0,16,y0+3,'w');put(15-off,y0+4,'w');        // рука компании
+    if(off===3){put(11,y0+1,'l');put(11,y0+2,'l');put(10,y0+3,'l')} // пальцы в замке
+    if(spark)[[10,0],[9,1],[11,1],[10,2],[4,2],[17,1]].forEach(([x,y])=>put(x,y,'y'));
+    return a.map(r=>r.join(''));
+  };
+  PX_ANIM.shake={fps:5,frames:[shake(0,0),shake(1,0),shake(2,0),shake(3,0),shake(3,-1),shake(3,1),shake(3,-1),shake(3,1),shake(3,0,1),shake(3,0,1),shake(3,0),shake(3,0,1),shake(3,0),shake(0,0)]};
+
+  // Работа в IT: монитор — код набирается, полоса тестов заполняется и становится зелёной галочкой;
+  // рядом кружка, над ней пар.
+  const LINES=[[2,'p',5],[3,'b',8],[4,'w',4],[5,'b',7],[6,'p',3]];
+  const desk=(k)=>{
+    const W=26,H=18,a=pxBlank(W,H).map(r=>[...r]);
+    const put=(x,y,c)=>{if(a[y]&&x>=0&&x<W)a[y][x]=c};
+    const rect=(x0,y0,x1,y1,c)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)put(x,y,c)};
+    rect(0,0,19,12,'g');rect(1,1,18,11,'k');                 // монитор
+    rect(8,13,11,14,'g');rect(5,15,14,15,'l');               // подставка
+    const typed=Math.min(k,LINES.reduce((s,l)=>s+l[2],0));let left=typed;
+    LINES.forEach(([y,c,len])=>{const n=Math.min(len,left);for(let i=0;i<n;i++)put(3+i+(c==='b'?2:0),y,c);left-=n});
+    const prog=Math.max(0,k-27);                              // полоса тестов
+    if(k>27&&k<34)for(let i=0;i<Math.min(14,prog*2+2);i++)put(3+i,9,'b');
+    if(k>=34){for(let i=0;i<14;i++)put(3+i,9,'G');[[14,6],[15,7],[16,6],[17,5]].forEach(([x,y])=>put(x,y,'G'))}
+    rect(21,11,24,15,'w');put(25,12,'w');put(25,13,'w');rect(22,12,23,12,'B');  // кружка
+    const st=k%3;[[22,9-st],[23,8-st]].forEach(([x,y])=>{if(y>=6)put(x,y,'g')}); // пар
+    return a.map(r=>r.join(''));
+  };
+  PX_ANIM.desk={fps:7,frames:Array.from({length:44},(_,k)=>desk(k))};
 })();
