@@ -332,3 +332,9 @@ body{background:var(--bg-page)}
 @media (max-width:560px){.mm3{gap:10px}.mm3-i:nth-child(2){transform:translateY(-20px)}.mm3-i:nth-child(3){transform:translateY(-40px)}.mm3-art{height:110px}.mm3-i b{font-size:12px}}
 .mm3-art{margin-bottom:0;height:200px}
 @media (max-width:560px){.mm3-art{height:120px}}
+/* ── две иллюстрации без рамок ── */
+.mm2{display:flex;align-items:flex-end;justify-content:center;gap:72px;padding:24px 0}
+.mm2 svg{max-width:46%;height:auto}
+.mm2 svg:first-child{margin-bottom:96px}
+@media (max-width:1100px){.mm2{justify-content:flex-start}}
+@media (max-width:560px){.mm2{gap:32px}.mm2 svg:first-child{margin-bottom:48px}}

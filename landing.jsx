@@ -30,17 +30,12 @@ const FAQ=[
  ['Что если тест не получится?','Можно сразу сдать тест на грейд ниже. Повторно сменить грейд можно через 3 месяца.'],
  ['Сколько стоит?','Для кандидатов бесплатно. Для компаний — [ТАРИФ ДЛЯ КОМПАНИЙ].']];
 
-const SCENES=[['clock','Тест на 40 минут'],['climb','Место в рейтинге категории'],['offer','Приглашение с зарплатой']];
-// Три пиксельные сцены, как в регистрации; активная подсвечивается по очереди.
+// Две пиксельные анимации без рамок: рост в рейтинге и приглашение с зарплатой.
 function MatchMachine(){
-  const reduce=React.useMemo(()=>pxReduced(),[]);
-  const [act,setAct]=React.useState(0);
-  React.useEffect(()=>{if(reduce)return;const i=setInterval(()=>setAct(a=>(a+1)%SCENES.length),2600);return()=>clearInterval(i)},[reduce]);
-  return <ol className="mm3" aria-label="Как это работает: тест, рейтинг, приглашение">
-    {SCENES.map(([art,t],i)=><li key={art} className={'mm3-i'+(!reduce&&i===act?' on':'')} aria-label={t}>
-      <div className="mm3-art"><PixelArt name={art} px={7}/></div>
-    </li>)}
-  </ol>;
+  return <div className="mm2" role="img" aria-label="Ваша строка поднимается в рейтинге категории, и компания присылает приглашение с зарплатой">
+    <PixelArt name="climb" px={14}/>
+    <PixelArt name="offer" px={12}/>
+  </div>;
 }
 
 function Landing({go,onReset}){

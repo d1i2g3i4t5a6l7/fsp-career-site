@@ -21,30 +21,28 @@
   };
   PX_ANIM.clock={fps:4,frames:[0,1,2,3,4,5,6,7,8,8,8,8].map(clock)};
 
-  // Рейтинг: ваш синий столбец поднимается с 4-го места на 2-е, загорается стрелка.
-  const others=[['l',14],['g',12],['g',10]];
+  // Рейтинг: ваша синяя полоса поднимается с 3-го места на 1-е, загорается стрелка.
+  const others=[['g',13],['g',10]];
   const board=(pos,len,arrow)=>{
     const rows=others.slice();rows.splice(pos,0,['p',len]);
-    const a=pxBlank(18,14).map(r=>[...r]);
+    const a=pxBlank(18,9).map(r=>[...r]);
     rows.forEach(([c,L],i)=>{const y=1+i*3;const you=c==='p';
-      a[y][0]=a[y+1][0]=you?'p':'g';
-      for(let x=2;x<2+L&&x<18;x++){a[y][x]=you?'b':c;a[y+1][x]=you?'b':c}
+      for(let x=0;x<L&&x<18;x++){a[y][x]=you?'b':c;a[y+1][x]=you?'b':c}
       if(you&&arrow){[[16,y],[15,y+1],[16,y+1],[17,y+1]].forEach(([x,yy])=>{if(a[yy])a[yy][x]='G'})}
     });
     return a.map(r=>r.join(''));
   };
-  PX_ANIM.climb={fps:4,frames:[board(3,6),board(3,8),board(3,9),board(2,9),board(2,11),board(1,11),board(1,12,1),board(1,12,0),board(1,12,1),board(1,12,0),board(1,12,1),board(1,12,1)]};
+  PX_ANIM.climb={fps:4,frames:[board(2,6),board(2,8),board(2,10),board(1,10),board(1,12),board(0,12),board(0,14,1),board(0,14,0),board(0,14,1),board(0,14,0),board(0,14,1),board(0,14,1)]};
 
   // Приглашение: собеседник печатает, затем приходит пузырь с ₽ и мигает уведомление.
   const RUB=['.pppp.','.p...p','.p...p','pppppp','.p....','pppp..','.p....'];
   const bubble=(mode,dot)=>{
     const a=pxBlank(18,15).map(r=>[...r]);
-    const box=(x0,y0,x1,y1)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)a[y][x]=(y===y0||y===y1||x===x0||x===x1)?'w':'k'};
-    if(mode<3){box(1,6,9,10);[[3,8],[5,8],[7,8]].forEach(([x,y],i)=>{a[y][x]=i===mode?'w':'g'});a[11][2]=a[12][2]='w';a[11][3]='w'}
-    else{box(1,1,16,11);RUB.forEach((r,dy)=>[...r].forEach((c,dx)=>{if(c==='p')a[3+dy][3+dx]='b'}));
-      for(let x=11;x<=14;x++){a[4][x]='l';a[6][x]=x<14?'l':'k';a[8][x]='G'}
-      a[12][2]=a[13][2]='w';a[12][3]='w';
-      if(dot){a[0][15]=a[0][16]=a[1][15]=a[1][16]='r'}}
+    const box=(x0,y0,x1,y1)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)a[y][x]=(y===y0||y===y1||x===x0||x===x1)?'w':'.'};
+    if(mode<3){box(3,6,11,10);[[5,8],[7,8],[9,8]].forEach(([x,y],i)=>{a[y][x]=i===mode?'w':'g'});a[11][4]=a[12][4]='w';a[11][5]='w'}
+    else{box(3,1,14,11);RUB.forEach((r,dy)=>[...r].forEach((c,dx)=>{if(c==='p')a[3+dy][6+dx]='b'}));
+      a[12][4]=a[13][4]='w';a[12][5]='w';
+      if(dot){a[0][14]=a[0][15]=a[1][14]=a[1][15]='r'}}
     return a.map(r=>r.join(''));
   };
   PX_ANIM.offer={fps:5,frames:[bubble(0),bubble(1),bubble(2),bubble(0),bubble(1),bubble(2),bubble(3,1),bubble(3,1),bubble(3,0),bubble(3,1),bubble(3,0),bubble(3,1),bubble(3,1),bubble(3,1)]};
