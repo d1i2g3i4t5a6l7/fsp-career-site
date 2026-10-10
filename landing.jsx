@@ -30,51 +30,19 @@ const FAQ=[
  ['Что если тест не получится?','Можно сразу сдать тест на грейд ниже. Повторно сменить грейд можно через 3 месяца.'],
  ['Сколько стоит?','Для кандидатов бесплатно. Для компаний — [ТАРИФ ДЛЯ КОМПАНИЙ].']];
 
-const CODE_LINES=[
- [['k','def '],['f','dedupe'],['p','(stream):']],
- [['p','    seen = '],['f','OrderedDict'],['p','()']],
- [['k','    for '],['p','ev '],['k','in '],['p','stream:']],
- [['k','        while '],['p','seen '],['k','and '],['p','old(ev):']],
- [['p','            seen.popitem(last='],['k','False'],['p',')']],
- [['k','        if '],['p','ev["id"] '],['k','not in '],['p','seen:']],
- [['k','            yield '],['p','ev']]];
-const EVAL=[['Корректность',92],['Память',88],['Порядок событий',61],['Качество кода',85]];
-
-function useCount(target,run,ms=900){
-  const [v,setV]=React.useState(run?target:0);
-  React.useEffect(()=>{if(!run){setV(0);return}let raf,t0;const step=t=>{t0=t0||t;const k=Math.min(1,(t-t0)/ms);setV(Math.round(target*(1-Math.pow(1-k,3))));if(k<1)raf=requestAnimationFrame(step)};raf=requestAnimationFrame(step);return()=>cancelAnimationFrame(raf)},[run,target]);
-  return v;
-}
-// Сцена: код → оценка ИИ → категория → приглашение → принято. Цикл ~13 с.
+const SCENES=[['test','Решаете задачу','40 минут'],['result','Получаете категорию','Backend · Middle'],['email','Компания пишет','с зарплатой']];
+// Три пиксельные сцены, как в регистрации; активная подсвечивается по очереди.
 function MatchMachine(){
   const reduce=React.useMemo(()=>pxReduced(),[]);
-  const [ph,setPh]=React.useState(reduce?6:0);
-  const [loop,setLoop]=React.useState(0);
-  const [left,setLeft]=React.useState(32*60+48);
-  React.useEffect(()=>{if(reduce)return;
-    const durs=[2600,1500,2000,1700,1900,2400,1200];
-    let t=setTimeout(function tick(){setPh(p=>{const n=(p+1)%durs.length;if(n===0){setLoop(l=>l+1);setLeft(32*60+48)}t=setTimeout(tick,durs[n]);return n})},durs[0]);
-    return()=>clearTimeout(t)},[reduce]);
-  React.useEffect(()=>{if(reduce||ph>1)return;const i=setInterval(()=>setLeft(l=>l-1),1000);return()=>clearInterval(i)},[ph,reduce]);
-  const score=useCount(86,ph>=2);
-  const on=n=>ph>=n?' on':'';
-  const mm=String(Math.floor(left/60)).padStart(2,'0'),ss=String(left%60).padStart(2,'0');
-  return <div className="mm" aria-label="Как работает ФСП Карьера: решение, оценка, категория, приглашение" role="img">
-    <div className="mm-win">
-      <div className="mm-bar"><PixelArt name="bot" px={2}/><span className="tab on">solution.py</span><span className="mm-state">{ph<1?'лайвкодинг':ph<2?'отправлено ✓':'проверено'}</span><span className="mm-timer">{mm}:{ss}</span></div>
-      <pre className="mm-code" key={loop}>{CODE_LINES.map((ln,i)=><div key={i} className="mm-ln" style={{animationDelay:(reduce?0:i*300)+'ms'}}><span className="mm-no">{i+1}</span>{ln.map(([c,t],j)=><span key={j} className={'c-'+c}>{t}</span>)}</div>)}</pre>
-      <div className={'mm-eval'+on(2)}>
-        <div className="mm-eval-l">{EVAL.map(([k,v],i)=><div key={k} className="mm-row"><span>{k}</span><div className="bar6"><div style={{width:ph>=2?v+'%':'0%',background:v<70?'var(--warning)':'var(--accent)',transitionDelay:i*120+'ms'}}></div></div></div>)}</div>
-        <div className="mm-score"><span className="cap">оценка ИИ</span><span className="pix">{score}</span></div>
-      </div>
-      <div className={'mm-cat'+on(3)}><span className="cap">категория</span><b>Backend · <span>Middle</span></b><span className="mm-rank">2 из 38 · эксперт ✓</span></div>
-    </div>
-    <div className={'mm-inv'+on(4)+(ph>=5?' acc':'')}>
-      <div className="mm-inv-top"><span className="cap">Северный код</span><span className="mm-new">{ph>=5?'принято':'новое приглашение'}</span></div>
-      <div className="mm-inv-mid"><b className="mm-inv-t">Backend-разработчик</b><span className="mm-sal">230–270 тыс. ₽</span></div>
-      <div className={'mm-contacts'+on(5)}>✓ контакты открыты компании</div>
-    </div>
-  </div>;
+  const [act,setAct]=React.useState(0);
+  React.useEffect(()=>{if(reduce)return;const i=setInterval(()=>setAct(a=>(a+1)%SCENES.length),2600);return()=>clearInterval(i)},[reduce]);
+  return <ol className="mm3" aria-label="Как это работает: задача, категория, приглашение">
+    {SCENES.map(([art,t,sub],i)=><li key={art} className={'mm3-i'+(!reduce&&i===act?' on':'')}>
+      <div className="mm3-art"><PixelArt name={art} px={7}/></div>
+      <span className="mm3-n">{String(i+1).padStart(2,'0')}</span>
+      <b>{t}</b><span className="hint">{sub}</span>
+    </li>)}
+  </ol>;
 }
 
 function Landing({go,onReset}){
