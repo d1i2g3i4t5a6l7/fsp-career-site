@@ -30,17 +30,15 @@ const FAQ=[
  ['Что если тест не получится?','Можно сразу сдать тест на грейд ниже. Повторно сменить грейд можно через 3 месяца.'],
  ['Сколько стоит?','Для кандидатов бесплатно. Для компаний — [ТАРИФ ДЛЯ КОМПАНИЙ].']];
 
-const SCENES=[['test','Решаете задачу','40 минут'],['result','Получаете категорию','Backend · Middle'],['email','Компания пишет','с зарплатой']];
+const SCENES=[['clock','Тест на 40 минут'],['climb','Место в рейтинге категории'],['offer','Приглашение с зарплатой']];
 // Три пиксельные сцены, как в регистрации; активная подсвечивается по очереди.
 function MatchMachine(){
   const reduce=React.useMemo(()=>pxReduced(),[]);
   const [act,setAct]=React.useState(0);
   React.useEffect(()=>{if(reduce)return;const i=setInterval(()=>setAct(a=>(a+1)%SCENES.length),2600);return()=>clearInterval(i)},[reduce]);
-  return <ol className="mm3" aria-label="Как это работает: задача, категория, приглашение">
-    {SCENES.map(([art,t,sub],i)=><li key={art} className={'mm3-i'+(!reduce&&i===act?' on':'')}>
+  return <ol className="mm3" aria-label="Как это работает: тест, рейтинг, приглашение">
+    {SCENES.map(([art,t],i)=><li key={art} className={'mm3-i'+(!reduce&&i===act?' on':'')} aria-label={t}>
       <div className="mm3-art"><PixelArt name={art} px={7}/></div>
-      <span className="mm3-n">{String(i+1).padStart(2,'0')}</span>
-      <b>{t}</b><span className="hint">{sub}</span>
     </li>)}
   </ol>;
 }
