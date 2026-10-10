@@ -34,7 +34,7 @@ const FAQ=[
 function MatchMachine(){
   return <div className="mm2" role="img" aria-label="Ваша строка поднимается в рейтинге категории, и компания присылает приглашение с зарплатой">
     <PixelArt name="climb" px={14}/>
-    <PixelArt name="offer" px={12}/>
+    <PixelArt name="offer" px={13}/>
   </div>;
 }
 
