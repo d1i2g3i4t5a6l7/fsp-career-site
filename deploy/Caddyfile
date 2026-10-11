@@ -1,0 +1,11 @@
+# Сайт по https: сертификат Let's Encrypt Caddy получает и продлевает сам
+{$SITE_HOST} {
+	encode zstd gzip
+	reverse_proxy web:80
+}
+
+# Запасной вход по IP без https — если адрес с https у кого-то не открывается
+http://{$SITE_IP} {
+	encode zstd gzip
+	reverse_proxy web:80
+}

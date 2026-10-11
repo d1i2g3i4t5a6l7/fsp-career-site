@@ -1,0 +1,32 @@
+# Запуск на сервере поверх compose.yaml:
+#   docker compose -f compose.yaml -f compose.server.yaml up -d --build
+# Настройки — в .env рядом с этим файлом (в git не попадает): SITE_HOST, SITE_IP, SITE_PASSWORD, POSTGRES_PASSWORD.
+# Снаружи открыт только Caddy (порты 80 и 443): сам получает сертификат https и пересылает запросы на сайт.
+# Сайт и бэкенд, как и локально, слушают только 127.0.0.1 сервера.
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_HOST: ${SITE_HOST:?укажите SITE_HOST в .env}
+      SITE_IP: ${SITE_IP:?укажите SITE_IP в .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Сервер на одно ядро: Docker не запустит контейнер с лимитом больше числа ядер.
+  # Памяти мало — код кандидата в тестах не должен отнимать её у базы и бэкенда
+  runner:
+    cpus: ${RUNNER_CPUS:-1}
+    mem_limit: ${RUNNER_MEM:-512m}
+
+volumes:
+  caddy-data:
+  caddy-config:

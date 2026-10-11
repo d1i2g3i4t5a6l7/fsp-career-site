@@ -59,6 +59,24 @@ localhost:8010 ──► workspace ──unix-сокет──► runner   (бе
 | Сохранить банк задач в репозиторий | `python workspace/scripts/export_tasks.py` — одобренные задачи из БД в `workspace/tasks/`, оттуда они загрузятся на любой машине |
 | Другой порт | `WORKSPACE_PORT=8020 docker compose up -d` |
 
+### На сервере
+
+Тот же стенд плюс Caddy — наружу открыт только он (порты 80 и 443): сам получает сертификат https и пересылает запросы на сайт. Сайт и бэкенд по-прежнему слушают только `127.0.0.1`. Настройки сервера — `compose.server.yaml` и `deploy/Caddyfile`.
+
+1. На сервере — Docker с Compose, папка проекта и `workspace/.env` с ключами (права `600`, только root).
+2. Рядом с `compose.yaml` — файл `.env` (в `.gitignore`, права `600`):
+
+   ```bash
+   SITE_HOST=1-2-3-4.sslip.io   # адрес сайта с https; без своего домена — IP сервера через sslip.io
+   SITE_IP=1.2.3.4              # запасной вход по IP, без https
+   SITE_PASSWORD=…              # общий пароль на сайт, логин fsp; пусто — сайт открыт
+   POSTGRES_PASSWORD=…
+   ```
+
+3. `export COMPOSE_FILE=compose.yaml:compose.server.yaml`, затем `docker compose up -d --build`. На слабом сервере собирать по одной части: `docker compose build web`, потом `workspace`, `runner`.
+
+Песочнице на сервере — 1 ядро и 512 МБ памяти (`RUNNER_CPUS`, `RUNNER_MEM` в `.env`): на сервере с одним ядром Docker не запустит контейнер с лимитом в 2 ядра. Остальные команды — как в таблице выше, с тем же `COMPOSE_FILE`.
+
 ## Запуск без Docker
 
 Для разработки: [workspace/README.md](workspace/README.md#запуск). Там SQLite и `SANDBOX=local` — код кандидата запускается прямо на машине, поэтому только для своих задач.
