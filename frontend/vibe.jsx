@@ -39,7 +39,7 @@ function VibeTest({category,level,onExit,onBack,onSubmit,inline}){
     // Сначала открываем файл, о котором говорит условие, а не первый по алфавиту
     const at=p=>{const i=a.task.statement.indexOf(p);return i<0?1e9:i};
     load(a);setFiles(a.files);setCur(Object.keys(a.files).filter(p=>p!==VIBE_RUNNER&&!isTestFile(p)).sort((x,y)=>at(x)-at(y)||x.localeCompare(y))[0]||'');
-  }).catch(e=>setErr(e.status===404?'Для направления «'+category+'» тест на '+D.gradeLabel(level)+' пока недоступен: задачи ещё готовятся. Выберите другое направление или грейд.':e.message))},[]);
+  }).catch(e=>setErr(e.status===404?'Для направления «'+category+'» тест на '+D.gradeLabel(level)+' пока недоступен. В демо-версии задача есть только для Backend со стеком Python и PostgreSQL на грейд Middle: она несложная и нужна, чтобы показать, как работает сервис.':e.message))},[]);
   React.useEffect(()=>{if(!id)return;const t=setInterval(()=>setLeft(l=>Math.max(0,l-1)),1000);return()=>clearInterval(t)},[id]);
   React.useEffect(()=>{if(id&&left===0)finish()},[left]);
   // Уход со вкладки запрещён: каждый уход и возврат уходят на сервер и отмечаются в результате

@@ -1,8 +1,10 @@
 const OB_STEPS=['Аккаунт','Почта','ФСП ID','Опрос','Грейд','Тест','Категория'];
 const INDUSTRIES=['Финтех','Госсектор','E-commerce','Медиа','Промышленность','Игры','Телеком','Образование'];
+// Выбор, для которого на демо есть задача: с него начинается опрос, к нему возвращает «← К опросу»
+const OB_DEMO={spec:'backend',stack:['Python','PostgreSQL'],grade:'middle'};
 
 function Onboarding({hasFsp,setHasFsp,onAccount,onDone,onExit,onEmployer,onHome,step=0,setStep}){
-  const [f,setF]=React.useState({email:'a.korneev@mail.ru',pass:'fsp-test-2026',consent:true,code:'',fsp:null,spec:'backend',stack:['Python','PostgreSQL'],exp:'3',ind:['Финтех'],grade:'middle'});
+  const [f,setF]=React.useState({email:'a.korneev@mail.ru',pass:'fsp-test-2026',consent:true,code:'',fsp:null,exp:'3',ind:['Финтех'],...OB_DEMO});
   const set=(k,v)=>setF(o=>({...o,[k]:v}));
   const next=()=>setStep(step+1);
   const tog=(k,v)=>set(k,f[k].includes(v)?f[k].filter(x=>x!==v):[...f[k],v]);
@@ -19,7 +21,7 @@ function Onboarding({hasFsp,setHasFsp,onAccount,onDone,onExit,onEmployer,onHome,
       {step===2&&<ObFsp hasFsp={hasFsp} setHasFsp={setHasFsp} f={f} set={set} next={next}/>}
       {step===3&&<ObSurvey f={f} set={set} tog={tog} next={next}/>}
       {step===4&&<ObGrade f={f} set={set} next={next}/>}
-      {step===5&&<ObTest f={f} set={set} next={next} back={()=>setStep(3)}/>}
+      {step===5&&<ObTest f={f} set={set} next={next} back={()=>{setF(o=>({...o,...OB_DEMO}));setStep(3)}}/>}
       {step===6&&<ObResult f={f} onDone={()=>onDone(f)} onTest={()=>setStep(5)}/>}
     </div>
     {step===0&&<div className="strip"></div>}
