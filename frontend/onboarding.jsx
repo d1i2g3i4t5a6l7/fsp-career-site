@@ -141,7 +141,7 @@ function ObResult({f,onDone,onTest}){
   const annulled=done&&res.review&&res.review.annulled,passed=done&&!annulled&&res.final&&res.final.passed;
   return <div className="stack-24">
     <ArtHead art="result"><SectionTitle level={1} eyebrow="{•} результат">{!done?'Проверяем решение':passed?'Категория присвоена':'Категория не присвоена'}</SectionTitle></ArtHead>
-    {!done?<Panel><span className="hint">{res&&res.status==='failed'?'Проверка не удалась. Решение сохранено — попробуйте открыть результат позже.':err||'ИИ проверяет решение по критериям задачи — это займёт около минуты.'}</span></Panel>:<>
+    {!done?<GradingBanner status={res?res.status:'pending'} err={err} level={a.level}/>:<>
       <div className="grid-2" style={{alignItems:'stretch'}}>
         <Panel><div className="stack-16">
           <span className="cap">{passed?'Ваша категория':'Тест на категорию'}</span>

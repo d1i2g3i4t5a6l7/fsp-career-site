@@ -153,6 +153,19 @@ function ResultCheck({res}){
       :rv&&!v.count?<div className="note">Эксперт подтвердил оценку ИИ{rv.comment?': '+rv.comment:''}.</div>:null}
   </>;
 }
+// Решение на проверке: грейд ещё не выдан. Заметная плашка с этапами вместо строки-подсказки.
+// status — grading_status бэкенда: pending (очередь к ИИ) | running | failed; compact — для шапки профиля
+function GradingBanner({status,err,level,compact}){
+  const failed=status==='failed';
+  const steps=[['Решение сдано','done'],[status==='pending'?'Ждёт очереди к ИИ':'ИИ проверяет по критериям',failed?'fail':'now'],['Грейд'+(level?' '+D.gradeLabel(level):''),'wait']];
+  return <section className={'grading'+(failed?' fail':'')+(compact?' compact':'')} role="status" aria-live="polite">
+    <div className="grading-top"><span className="grading-dot" aria-hidden="true"></span><span className="cap">{failed?'Проверка не удалась':'Идёт проверка'}</span></div>
+    <div className="grading-title">{failed?'Решение сохранено, но проверка не завершилась':'Решение на проверке. Грейд пока не выдан'}</div>
+    {!compact&&<ol className="grading-steps">{steps.map(([t,s],i)=><li key={i} className={s}><span aria-hidden="true">{s==='done'?'✓':s==='fail'?'×':s==='now'?'…':String(i+1).padStart(2,'0')}</span>{t}</li>)}</ol>}
+    {!failed&&<div className="grading-bar" aria-hidden="true"><i></i></div>}
+    <div className="hint">{failed?'Решение не потеряется: откройте результат позже.':err||'Обычно около минуты. Можно уйти со страницы: итог появится в разделе «Грейд и тесты».'}</div>
+  </section>;
+}
 function VibeResult({attemptId,onExit}){
   const [att,setAtt]=React.useState(null);const [res,err]=useAttemptResult(attemptId);
   React.useEffect(()=>{WS.attempt(attemptId).then(setAtt).catch(()=>{})},[attemptId]);
@@ -160,7 +173,7 @@ function VibeResult({attemptId,onExit}){
   const annulled=done&&res.review&&res.review.annulled,passed=done&&!annulled&&res.final&&res.final.passed;
   return <div className="page">
     <PageHead eyebrow="// вайбкодинг" title="Решение отправлено"/>
-    {!done?<Panel><span className="hint">{res&&res.status==='failed'?'Проверка не удалась. Решение сохранено — попробуйте открыть результат позже.':err||'ИИ проверяет решение по критериям задачи — это займёт около минуты.'}</span></Panel>:<>
+    {!done?<GradingBanner status={res?res.status:'pending'} err={err} level={level}/>:<>
       <div className="grid-2" style={{alignItems:'stretch'}}>
         <Panel><ResultScore res={res} level={level}/></Panel>
         <Panel><div className="stack-16"><span className="cap">Статус</span><div style={{fontSize:20,fontWeight:700}}>{annulled?'Попытка аннулирована':passed?'Тест пройден':'Тест не пройден'}</div><div className="hint">{annulled?'Тесты заморожены на 30 дней.':passed?'Грейд — '+att.category+' · '+D.gradeLabel(level)+'. Следующая смена — через 3 месяца. Эксперт может скорректировать оценку ИИ.':'Грейд не меняется. Тест на уровень ниже доступен сразу, на этот же — через 30 дней.'}</div></div></Panel>
@@ -171,4 +184,4 @@ function VibeResult({attemptId,onExit}){
     <div><Button onClick={onExit} iconRight="→">К грейду</Button></div>
   </div>;
 }
-Object.assign(window,{VibeTest,VibeResult,ResultRows,ResultCheck,ResultScore,VERDICT,VIBE_RUNNER,isTestFile,times,quote});
+Object.assign(window,{VibeTest,VibeResult,GradingBanner,ResultRows,ResultCheck,ResultScore,VERDICT,VIBE_RUNNER,isTestFile,times,quote});

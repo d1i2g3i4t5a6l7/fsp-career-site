@@ -63,7 +63,7 @@ function App(){
     const isC=route.view==='candidate';
     content=<Shell role={route.view} setRole={setRole} nav={isC?cNav:eNav} page={route.page} setPage={isC?goC:goE} onHome={()=>go('home')}
       user={isC?{initials:'АК',name:'Алексей Корнеев',sub:D.specLabel(me.spec)+' · '+(me.grade?D.gradeLabel(me.grade):'без грейда')}:{initials:'ИВ',name:'Ирина Волкова',sub:'HR · Северный код'}}>
-      {isC?({home:<CandHome me={me} invites={invites} go={goC}/>,invites:<CandInvites invites={invites} setInvites={setInvites} toast={toast}/>,tasks:<CandTasks toast={toast}/>,vacancies:<CandVacancies responses={responses} setResponses={setResponses} toast={toast}/>,grade:<CandGrade me={me} onTests={reloadTests}/>,resume:<CandResume me={me} toast={toast}/>,settings:<CandSettings hasFsp={hasFsp} setHasFsp={setHasFsp}/>}[route.page])
+      {isC?({home:<CandHome me={me} invites={invites} go={goC} onTests={reloadTests}/>,invites:<CandInvites invites={invites} setInvites={setInvites} toast={toast}/>,tasks:<CandTasks toast={toast}/>,vacancies:<CandVacancies responses={responses} setResponses={setResponses} toast={toast}/>,grade:<CandGrade me={me} onTests={reloadTests}/>,resume:<CandResume me={me} toast={toast}/>,settings:<CandSettings hasFsp={hasFsp} setHasFsp={setHasFsp}/>}[route.page])
       :({need:<EmpNeed need={need} setNeed={setNeed} go={goE} toast={toast}/>,shortlist:<Shortlist {...empProps}/>,bank:<EmpBank {...empProps}/>,invites:<EmpInvites invites={invites} openCand={empProps.openCand}/>,vacancies:<EmpVacancies openCand={empProps.openCand} toast={toast}/>,review:<EmpReview toast={toast} onQueue={countReview}/>,company:<EmpCompany toast={toast}/>}[route.page])}
     </Shell>;
   }

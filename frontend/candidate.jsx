@@ -6,13 +6,15 @@ function useMe(hasFsp,tests){
   const me={...base,fsp:hasFsp?base.fsp:[]};
   const st=tests&&tests.st,hist=tests&&tests.hist||[];
   const last=hist.find(a=>a.final);
+  // Сданное решение, которое ИИ ещё проверяет: грейд по нему пока не выдан
+  const pending=hist.find(a=>a.status!=='active'&&!a.final&&['pending','running','failed'].includes(a.grading_status))||null;
   if(st&&st.grade){
     const conf=hist.find(a=>a.level===st.grade&&a.final&&a.final.passed&&!a.annulled);
     // Свежесть профиля — с даты теста, подтвердившего грейд
     const fresh=Math.max(0,Math.floor((Date.now()-new Date(st.confirmed_at))/864e5));
-    return {...me,grade:st.grade,test:st.score,expert:!!(conf&&conf.reviewed),fresh,last};
+    return {...me,grade:st.grade,test:st.score,expert:!!(conf&&conf.reviewed),fresh,last,pending};
   }
-  return baseGrade()?{...me,last}:{...me,grade:null,test:null,expert:false,last};
+  return baseGrade()?{...me,last,pending}:{...me,grade:null,test:null,expert:false,last,pending};
 }
 function rankInCat(me){
   const pool=D.CANDIDATES.map(c=>c.id==='me'?me:c).filter(c=>c.spec===me.spec&&c.grade===me.grade);
@@ -20,7 +22,9 @@ function rankInCat(me){
   return {pos:sorted.findIndex(x=>x.c.id==='me')+1,of:38};
 }
 
-function CandHome({me,invites,go}){
+function CandHome({me,invites,go,onTests}){
+  const [pres]=useAttemptResult(me.pending&&me.pending.grading_status!=='failed'?me.pending.attempt_id:null);
+  React.useEffect(()=>{if(pres&&['done','failed'].includes(pres.status)&&onTests)onTests()},[pres&&pres.status]);
   // Без подтверждённого грейда профиля нет в категории — нет и места в ней
   const r=me.grade&&rankInCat(me);const myInv=invites.filter(i=>i.cand==='me');
   const pct=r&&Math.round(r.pos/r.of*100);const last=me.last;
@@ -30,11 +34,12 @@ function CandHome({me,invites,go}){
       <div className="stack-16">
         <span className="cap">Категория, которую видят работодатели</span>
         <div className="big-cat">{D.specLabel(me.spec)} <span style={{color:me.grade?'var(--accent-text)':'var(--fg-2)'}}>{me.grade?D.gradeLabel(me.grade):'без грейда'}</span></div>
+        {me.pending&&<GradingBanner compact status={pres?pres.status:me.pending.grading_status} level={me.pending.level}/>}
         {me.grade?<div className="row-12" style={{flexWrap:'wrap'}}>{me.expert?<Tag discipline="security">Подтверждено экспертом</Tag>:<Tag>ИИ-оценка</Tag>}<Tag>Тест {me.test}/100</Tag><Tag>{me.fresh?'Обновлён '+me.fresh+' дн. назад':'Обновлён сегодня'}</Tag></div>
         :<div className="stack-12">
           <div className="row-12" style={{flexWrap:'wrap'}}><Tag>Грейд не подтверждён</Tag>{last&&<Tag>Последний тест: {D.gradeLabel(last.level)} · {last.final.score}/100, {last.annulled?'аннулирован':'не пройден'}</Tag>}</div>
           <span className="hint">Работодатели не видят профиль, пока грейд не подтверждён тестом.</span>
-          <div><Button size="sm" onClick={()=>go('grade')}>Пройти тест на грейд</Button></div>
+          {!me.pending&&<div><Button size="sm" onClick={()=>go('grade')}>Пройти тест на грейд</Button></div>}
         </div>}
       </div>
       <div className="hero-stats">
@@ -153,10 +158,14 @@ function CandGrade({me,onTests}){
   const shut=levels.filter(why);
   const shutHint=shut.length>1&&shut.length===levels.length&&new Set(shut.map(why)).size===1?why(shut[0]):shut.map(l=>D.gradeLabel(l)+': '+why(l)).join(' · ');
   const active=hist.find(a=>a.status==='active');
+  const pend=hist.find(a=>a.status!=='active'&&!a.final&&['pending','running','failed'].includes(a.grading_status));
+  const [pres]=useAttemptResult(pend&&pend.grading_status!=='failed'?pend.attempt_id:null);
+  React.useEffect(()=>{if(pres&&['done','failed'].includes(pres.status)){WS.grade(cat).then(setSt).catch(()=>{});WS.history().then(setHist).catch(()=>{});onTests&&onTests()}},[pres&&pres.status]);
   const story=[...hist].reverse().map(a=>({date:fmtDate(a.started_at),text:'Тест на '+D.gradeLabel(a.level)+' «'+a.task_title+'» — '+(a.status==='active'?'идёт':a.final?'ИИ '+a.ai_score+'/100'+(a.final.score!==a.ai_score?', после проверки эксперта '+a.final.score+'/100':'')+', '+(a.annulled?'аннулирован':a.final.passed?'пройден':'не пройден'):a.grading_status==='failed'?'проверка не удалась':'проверяется')+(a.tab_leaves?' · уходов со вкладки: '+a.tab_leaves:'')}));
   const items=[...(isRegistered()?[]:DEMO_STORY),...story];
   return <div className="page">
     <PageHead eyebrow="// грейд" title="Грейд и тесты"/>
+    {pend&&<GradingBanner status={pres?pres.status:pend.grading_status} level={pend.level}/>}
     <div className="grid-2">
       <Panel title="Текущий статус"><div className="stack-16">
         <div className="big-cat" style={{fontSize:36}}>{D.specLabel(me.spec)} · <span style={{color:grade?'var(--accent-text)':'var(--fg-2)'}}>{grade?D.gradeLabel(grade):'без грейда'}</span></div>
