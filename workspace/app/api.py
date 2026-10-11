@@ -318,6 +318,7 @@ class HistoryItemOut(BaseModel):
     final: FinalOut | None
     tab_leaves: int = 0
     annulled: bool = False
+    reviewed: bool = Field(default=False, description="Оценку ИИ смотрел человек: подтвердил, исправил или аннулировал")
 
 
 # --- REST ---

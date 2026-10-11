@@ -4,6 +4,11 @@ const WS_BASE='api/workspace';
 const CAND_KEY='fspk_cand';
 // Номер кандидата в бэкенде — свой у каждого браузера; «Сбросить мои данные» на главной заводит нового
 function candId(){try{let id=localStorage.getItem(CAND_KEY);if(!id){id='me-'+Math.random().toString(36).slice(2,10);localStorage.setItem(CAND_KEY,id)}return id}catch(e){return 'me'}}
+// Регистрация заводит новый аккаунт: свой номер кандидата, грейд и баллы — только из своих тестов.
+// Без регистрации кабинет — демо-аккаунт с грейдом из демо-данных, пока тест не подтвердит другой
+const REG_KEY='fspk_reg';
+function newAccount(){try{localStorage.setItem(CAND_KEY,'me-'+Math.random().toString(36).slice(2,10));localStorage.setItem(REG_KEY,'1')}catch(e){}}
+function isRegistered(){try{return localStorage.getItem(REG_KEY)==='1'}catch(e){return false}}
 async function wsApi(path,opt={}){
   const has=opt.body!==undefined;let r;
   try{r=await fetch(WS_BASE+path,{method:opt.method||'GET',headers:has?{'Content-Type':'application/json'}:undefined,body:has?JSON.stringify(opt.body):undefined})}
@@ -46,5 +51,15 @@ function useAttemptResult(id){
     tick();return()=>{stop=true;clearTimeout(t)}},[id]);
   return [res,err];
 }
+// Мои грейд и тесты с бэкенда для профиля, шапки и подборок; reload — перечитать после теста
+function useMyTests(category,key){
+  const [t,setT]=React.useState(null);const [n,setN]=React.useState(0);
+  React.useEffect(()=>{if(key===null)return;let stop=false;const id=candId();
+    Promise.all([WS.grade(category),WS.history()]).then(([st,hist])=>{if(!stop)setT({id,st,hist})}).catch(()=>{});
+    return()=>{stop=true}},[category,key,n]);
+  // Данные прежнего аккаунта (до регистрации или сброса) не показываем
+  const cur=(()=>{try{return localStorage.getItem(CAND_KEY)}catch(e){return null}})();
+  return [t&&t.id===cur?t:null,React.useCallback(()=>setN(x=>x+1),[])];
+}
 const fmtDate=iso=>iso?new Date(iso).toLocaleDateString('ru-RU'):'';
-Object.assign(window,{WS,candId,startOrResume,useAttemptResult,fmtDate});
+Object.assign(window,{WS,candId,newAccount,isRegistered,startOrResume,useAttemptResult,useMyTests,fmtDate});

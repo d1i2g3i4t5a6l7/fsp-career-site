@@ -81,8 +81,10 @@ def test_correction_rules(make_client):
 def test_confirm_without_changes(make_client):
     client = make_client()
     aid = _submitted(client)
+    assert client.get("/candidates/c1/attempts").json()[0]["reviewed"] is False
     same = _review(client, aid, verdicts={"dedup": "yes"}).json()  # как у ИИ — это подтверждение, не правка
     assert same["correction"] is None and same["review"]["annulled"] is False and _grade(client) == "middle"
+    assert client.get("/candidates/c1/attempts").json()[0]["reviewed"] is True  # «Подтверждено экспертом»
     assert _review(client, aid).status_code == 409  # решение принимается один раз
 
 

@@ -31,12 +31,13 @@ function NeedBar({need,go}){
 const REFINE=[['fsp','Есть достижения ФСП'],['expert','Подтверждено экспертом'],['remote','Готов к удалёнке'],['fresh','Активен за 7 дней']];
 function refineFn(r){return c=>(!r.fsp||c.fsp.length)&&(!r.expert||c.expert)&&(!r.remote||c.format==='Удалённо')&&(!r.fresh||c.fresh<=7);}
 
-function Shortlist({variant:initV='A',need,invites,openCand,openInvite,stars,toggleStar,go,hasFsp}){
+function Shortlist({variant:initV='A',need,invites,openCand,openInvite,stars,toggleStar,go,me}){
   const [variant,setVariant]=React.useState(()=>{try{return localStorage.getItem('fspk_view')||initV}catch(e){return initV}});
   const pickV=v=>{setVariant(v);try{localStorage.setItem('fspk_view',v)}catch(e){}};
   const [cat,setCat]=React.useState(need.spec+'|'+need.grade);
   const [ref,setRef]=React.useState({});
-  const meFix=c=>c.id==='me'&&!hasFsp?{...c,fsp:[]}:c;
+  // «Вы» — с грейдом и баллом из своих тестов; без подтверждённого грейда в подборку не попадаете
+  const meFix=c=>c.id==='me'?me:c;
   const cats=React.useMemo(()=>{
     const g=D.GRADES.map(x=>x.id);const gi=g.indexOf(need.grade);
     const list=[{spec:need.spec,grade:need.grade,note:'Точное совпадение',n:38}];
@@ -45,7 +46,7 @@ function Shortlist({variant:initV='A',need,invites,openCand,openInvite,stars,tog
     list.push({spec:need.spec==='backend'?'data':'backend',grade:need.grade,note:'Смежная: пересечение стека',n:9});
     return list;},[need]);
   const [cs,cg]=cat.split('|');
-  const all=D.CANDIDATES.map(meFix);
+  const all=D.CANDIDATES.map(meFix).filter(c=>c.grade);
   const pool=all.filter(c=>c.spec===cs&&c.grade===cg).filter(refineFn(ref)).map(c=>({c,s:D.score(c,need)})).sort((a,b)=>b.s.total-a.s.total);
   const p={need,invites,onOpen:openCand,onInvite:openInvite};
   const refineBar=<div className="row-12" style={{flexWrap:'wrap'}}><span className="cap">Уточнить</span>{REFINE.map(([k,l])=><Chip key={k} small on={ref[k]} onClick={()=>setRef(r=>({...r,[k]:!r[k]}))}>{l}</Chip>)}{Object.values(ref).some(Boolean)&&<Button variant="ghost" size="sm" onClick={()=>setRef({})}>Сбросить</Button>}<span className="hint" style={{marginLeft:'auto'}}>★ избранное: {stars.length}</span></div>;

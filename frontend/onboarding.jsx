@@ -1,7 +1,7 @@
 const OB_STEPS=['Аккаунт','Почта','ФСП ID','Опрос','Грейд','Тест','Категория'];
 const INDUSTRIES=['Финтех','Госсектор','E-commerce','Медиа','Промышленность','Игры','Телеком','Образование'];
 
-function Onboarding({hasFsp,onDone,onExit,onEmployer,onHome,step=0,setStep}){
+function Onboarding({hasFsp,setHasFsp,onAccount,onDone,onExit,onEmployer,onHome,step=0,setStep}){
   const [f,setF]=React.useState({email:'a.korneev@mail.ru',pass:'fsp-test-2026',consent:true,code:'',fsp:null,spec:'backend',stack:['Python','PostgreSQL'],exp:'3',ind:['Финтех'],grade:'middle'});
   const set=(k,v)=>setF(o=>({...o,[k]:v}));
   const next=()=>setStep(step+1);
@@ -14,13 +14,13 @@ function Onboarding({hasFsp,onDone,onExit,onEmployer,onHome,step=0,setStep}){
       <div className="row-12"><div className="role-sw" style={{margin:0,width:220}}><button className="on">Кандидат</button><button onClick={onEmployer}>Работодатель</button></div><Button variant="ghost" size="sm" onClick={onExit}>Пропустить →</Button></div>
     </header>
     <div className="ob-body" style={{maxWidth:wide?1280:720}}>
-      {step===0&&<ObAccount f={f} set={set} next={next}/>}
+      {step===0&&<ObAccount f={f} set={set} next={()=>{onAccount();next()}}/>}
       {step===1&&<ObCode f={f} set={set} next={next}/>}
-      {step===2&&<ObFsp hasFsp={hasFsp} f={f} set={set} next={next}/>}
+      {step===2&&<ObFsp hasFsp={hasFsp} setHasFsp={setHasFsp} f={f} set={set} next={next}/>}
       {step===3&&<ObSurvey f={f} set={set} tog={tog} next={next}/>}
       {step===4&&<ObGrade f={f} set={set} next={next}/>}
       {step===5&&<ObTest f={f} set={set} next={next} back={()=>setStep(3)}/>}
-      {step===6&&<ObResult f={f} onDone={()=>onDone(f)}/>}
+      {step===6&&<ObResult f={f} onDone={()=>onDone(f)} onTest={()=>setStep(5)}/>}
     </div>
     {step===0&&<div className="strip"></div>}
   </div>;
@@ -54,7 +54,7 @@ function ObCode({f,set,next}){
   </div>;
 }
 
-function ObFsp({hasFsp,f,set,next}){
+function ObFsp({hasFsp,setHasFsp,f,set,next}){
   const [linking,setLinking]=React.useState(false);
   const link=()=>{setLinking(true);setTimeout(()=>{set('fsp',hasFsp?'linked':'empty');setLinking(false)},900)};
   const me=D.CANDIDATES.find(c=>c.id==='me');
@@ -63,7 +63,7 @@ function ObFsp({hasFsp,f,set,next}){
     <p className="sub">Результаты соревнований Федерации подтверждают навыки и поднимают вас выше в категории. Без истории ФСП вы ранжируетесь по тесту и заданиям — это не штраф.</p>
     <Panel>
       {f.fsp===null&&<div className="stack-16">
-        <div className="row-12"><Button onClick={link} disabled={linking}>{linking?'Подключаемся…':'Войти через ФСП ID'}</Button><Button variant="ghost" onClick={()=>{set('fsp','skipped');next()}}>У меня нет ФСП ID</Button></div>
+        <div className="row-12"><Button onClick={link} disabled={linking}>{linking?'Подключаемся…':'Войти через ФСП ID'}</Button><Button variant="ghost" onClick={()=>{set('fsp','skipped');setHasFsp(false);next()}}>У меня нет ФСП ID</Button></div>
         <div className="hint">Мы получим только: дисциплины, мероприятия, место и год. Отвязать можно в настройках.</div>
       </div>}
       {f.fsp==='linked'&&<div className="stack-16">
@@ -125,33 +125,18 @@ function ObTest({f,set,next,back}){
   </div>;
 }
 
-function ObResultDemo({f,onDone}){
-  const total=Math.round(D.AI_EVAL.reduce((a,e)=>a+e.v,0)/D.AI_EVAL.length);
-  return <div className="stack-24">
-    <ArtHead art="result"><SectionTitle level={1} eyebrow="{•} результат">Категория присвоена</SectionTitle></ArtHead>
-    <div className="grid-2" style={{alignItems:'stretch'}}>
-      <Panel><div className="stack-16">
-        <span className="cap">Ваша категория</span>
-        <div className="big-cat">{D.specLabel(f.spec)}<br/><span style={{color:'var(--accent-text)'}}>{D.gradeLabel(f.grade)}</span></div>
-        <div className="row-12"><Tag tone="neutral">ИИ-оценка</Tag><span className="hint">Эксперт подтвердит до 09.10</span></div>
-      </div></Panel>
-      <Panel><div className="stack-16">
-        <span className="cap">Оценка ИИ</span>
-        <StatBlock value={total} label="из 100 · порог Middle — 70" size="sm"/>
-      </div></Panel>
-    </div>
-    <Panel title="Разбор решения">
-      <div className="stack-16">{D.AI_EVAL.map(e=><div key={e.k} className="eval-row">
-        <div style={{fontSize:14,fontWeight:700}}>{e.k}</div><Bar value={e.v} color={e.v<70?'var(--warning)':'var(--accent)'}/><div className="num">{e.v}</div>
-        <div className="hint" style={{gridColumn:'1 / -1'}}>{e.note}</div></div>)}</div>
-    </Panel>
-    <p className="sub">Профиль уже виден работодателям в категории с пометкой «ИИ-оценка». После проверки эксперта она сменится на «Подтверждено». Следующая смена грейда — с 07.01.2027.</p>
-    <div><Button onClick={onDone} iconRight="→">Перейти в кабинет</Button></div>
+// Результат теста. Открыли страницу заново — показываем последний свой тест; демо-результата нет
+function ObResult({f,onDone,onTest}){
+  // Уровень и категория — из самой попытки: тест мог продолжиться после перезагрузки с другим уровнем
+  const [hist,setHist]=React.useState(null);
+  React.useEffect(()=>{WS.history().then(setHist).catch(()=>setHist([]))},[]);
+  const a=hist&&(f.attempt?hist.find(x=>x.attempt_id===f.attempt):hist[0])||(f.attempt?{attempt_id:f.attempt,level:f.grade,category:D.specLabel(f.spec),status:'submitted'}:null);
+  const [res,err]=useAttemptResult(a&&a.status!=='active'?a.attempt_id:null);
+  if(!a||a.status==='active') return <div className="stack-24">
+    <ArtHead art="result"><SectionTitle level={1} eyebrow="{•} результат">{a?'Тест ещё идёт':hist===null?'Загружаем результат':'Тест ещё не пройден'}</SectionTitle></ArtHead>
+    {hist!==null&&<><p className="sub">{a?'Вернитесь к задаче и отправьте решение — результат появится здесь.':'Категорию присваивает тест на грейд: одна задача, 30 минут, вместе с ИИ-ассистентом.'}</p>
+      <div className="row-12"><Button onClick={onTest} iconRight="→">{a?'Вернуться к тесту':'Пройти тест'}</Button><Button variant="ghost" onClick={onDone}>Перейти в кабинет</Button></div></>}
   </div>;
-}
-function ObResult({f,onDone}){
-  const [res,err]=useAttemptResult(f.attempt);
-  if(!f.attempt) return <ObResultDemo f={f} onDone={onDone}/>;
   const done=res&&res.status==='done';
   const annulled=done&&res.review&&res.review.annulled,passed=done&&!annulled&&res.final&&res.final.passed;
   return <div className="stack-24">
@@ -160,10 +145,10 @@ function ObResult({f,onDone}){
       <div className="grid-2" style={{alignItems:'stretch'}}>
         <Panel><div className="stack-16">
           <span className="cap">{passed?'Ваша категория':'Тест на категорию'}</span>
-          <div className="big-cat">{D.specLabel(f.spec)}<br/><span style={{color:'var(--accent-text)'}}>{D.gradeLabel(f.grade)}</span></div>
+          <div className="big-cat">{a.category}<br/><span style={{color:'var(--accent-text)'}}>{D.gradeLabel(a.level)}</span></div>
           <div className="row-12"><Tag tone="neutral">ИИ-оценка</Tag><span className="hint">Эксперт может её скорректировать</span></div>
         </div></Panel>
-        <Panel><ResultScore res={res} level={f.grade}/></Panel>
+        <Panel><ResultScore res={res} level={a.level}/></Panel>
       </div>
       <ResultCheck res={res}/>
       <Panel title="Разбор решения"><ResultRows res={res}/></Panel>

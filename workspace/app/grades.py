@@ -334,6 +334,8 @@ class GradeService:
                     "final": _final_view(_final(g)),
                     "tab_leaves": leaves[a.id],
                     "annulled": a.id in reviews and reviews[a.id].annulled,
+                    # человек посмотрел оценку ИИ: подтвердил, исправил или аннулировал
+                    "reviewed": a.id in reviews,
                 }
             )
         return items

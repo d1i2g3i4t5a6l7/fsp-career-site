@@ -26,10 +26,10 @@ function EmpNeed({need,setNeed,go,toast}){
   </div>;
 }
 
-function EmpBank({need,invites,openCand,openInvite,stars,toggleStar,hasFsp}){
+function EmpBank({need,invites,openCand,openInvite,stars,toggleStar,me}){
   const [q,setQ]=React.useState({spec:'',grade:'',stack:[],fsp:false,expert:false,text:''});
   const set=(k,v)=>setQ(o=>({...o,[k]:v}));
-  const rows=D.CANDIDATES.map(c=>c.id==='me'&&!hasFsp?{...c,fsp:[]}:c).filter(c=>(!q.spec||c.spec===q.spec)&&(!q.grade||c.grade===q.grade)&&q.stack.every(s=>c.stack.includes(s))&&(!q.fsp||c.fsp.length)&&(!q.expert||c.expert)&&(!q.text||(c.name+c.stack.join(' ')+c.city).toLowerCase().includes(q.text.toLowerCase())))
+  const rows=D.CANDIDATES.map(c=>c.id==='me'?me:c).filter(c=>c.grade).filter(c=>(!q.spec||c.spec===q.spec)&&(!q.grade||c.grade===q.grade)&&q.stack.every(s=>c.stack.includes(s))&&(!q.fsp||c.fsp.length)&&(!q.expert||c.expert)&&(!q.text||(c.name+c.stack.join(' ')+c.city).toLowerCase().includes(q.text.toLowerCase())))
     .map(c=>({c,s:D.score(c,need)})).sort((a,b)=>b.s.total-a.s.total);
   const allStack=[...new Set(Object.values(D.STACKS).flat())].slice(0,12);
   return <div className="page">

@@ -3,6 +3,7 @@
 import './pixel.jsx';
 import './ui.jsx';
 import './api.js';
+import './pdf.js';
 import './onboarding.jsx';
 import './vibe.jsx';
 import './candidate.jsx';

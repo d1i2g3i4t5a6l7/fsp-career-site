@@ -1,26 +1,44 @@
-function useMe(hasFsp){
+// Грейд без подтверждённого теста: у демо-аккаунта — демо-грейд, у зарегистрированного — нет
+const baseGrade=()=>isRegistered()?null:D.CANDIDATES.find(c=>c.id==='me').grade;
+// Мой профиль: демо-данные (имя, стек, ФСП…), а грейд, балл теста и проверка эксперта — с бэкенда
+function useMe(hasFsp,tests){
   const base=D.CANDIDATES.find(c=>c.id==='me');
-  return {...base,fsp:hasFsp?base.fsp:[]};
+  const me={...base,fsp:hasFsp?base.fsp:[]};
+  const st=tests&&tests.st,hist=tests&&tests.hist||[];
+  const last=hist.find(a=>a.final);
+  if(st&&st.grade){
+    const conf=hist.find(a=>a.level===st.grade&&a.final&&a.final.passed&&!a.annulled);
+    // Свежесть профиля — с даты теста, подтвердившего грейд
+    const fresh=Math.max(0,Math.floor((Date.now()-new Date(st.confirmed_at))/864e5));
+    return {...me,grade:st.grade,test:st.score,expert:!!(conf&&conf.reviewed),fresh,last};
+  }
+  return baseGrade()?{...me,last}:{...me,grade:null,test:null,expert:false,last};
 }
 function rankInCat(me){
-  const pool=D.CANDIDATES.filter(c=>c.spec===me.spec&&c.grade===me.grade).map(c=>c.id==='me'?me:c);
+  const pool=D.CANDIDATES.map(c=>c.id==='me'?me:c).filter(c=>c.spec===me.spec&&c.grade===me.grade);
   const sorted=pool.map(c=>({c,s:D.score(c,{stack:[]}).total})).sort((a,b)=>b.s-a.s);
   return {pos:sorted.findIndex(x=>x.c.id==='me')+1,of:38};
 }
 
 function CandHome({me,invites,go}){
-  const r=rankInCat(me);const myInv=invites.filter(i=>i.cand==='me');
-  const pct=Math.round(r.pos/r.of*100);
+  // Без подтверждённого грейда профиля нет в категории — нет и места в ней
+  const r=me.grade&&rankInCat(me);const myInv=invites.filter(i=>i.cand==='me');
+  const pct=r&&Math.round(r.pos/r.of*100);const last=me.last;
   return <div className="page">
     <PageHead eyebrow="// мой профиль" title="Профиль и категория"/>
     <div className="hero-cat">
       <div className="stack-16">
         <span className="cap">Категория, которую видят работодатели</span>
-        <div className="big-cat">{D.specLabel(me.spec)} <span style={{color:'var(--accent-text)'}}>{D.gradeLabel(me.grade)}</span></div>
-        <div className="row-12" style={{flexWrap:'wrap'}}><Tag discipline="security">Подтверждено экспертом</Tag><Tag>Тест {me.test}/100</Tag><Tag>Обновлён {me.fresh} дн. назад</Tag></div>
+        <div className="big-cat">{D.specLabel(me.spec)} <span style={{color:me.grade?'var(--accent-text)':'var(--fg-2)'}}>{me.grade?D.gradeLabel(me.grade):'без грейда'}</span></div>
+        {me.grade?<div className="row-12" style={{flexWrap:'wrap'}}>{me.expert?<Tag discipline="security">Подтверждено экспертом</Tag>:<Tag>ИИ-оценка</Tag>}<Tag>Тест {me.test}/100</Tag><Tag>{me.fresh?'Обновлён '+me.fresh+' дн. назад':'Обновлён сегодня'}</Tag></div>
+        :<div className="stack-12">
+          <div className="row-12" style={{flexWrap:'wrap'}}><Tag>Грейд не подтверждён</Tag>{last&&<Tag>Последний тест: {D.gradeLabel(last.level)} · {last.final.score}/100, {last.annulled?'аннулирован':'не пройден'}</Tag>}</div>
+          <span className="hint">Работодатели не видят профиль, пока грейд не подтверждён тестом.</span>
+          <div><Button size="sm" onClick={()=>go('grade')}>Пройти тест на грейд</Button></div>
+        </div>}
       </div>
       <div className="hero-stats">
-        <div><span className="cap">Место в категории</span><div className="pix">{r.pos}<small>/{r.of}</small></div><span className="hint">топ {pct}%</span></div>
+        <div><span className="cap">Место в категории</span><div className="pix">{r?<>{r.pos}<small>/{r.of}</small></>:'—'}</div><span className="hint">{r?'топ '+pct+'%':'после теста'}</span></div>
         <div><span className="cap">Приглашений</span><div className="pix">{myInv.length}</div><span className="hint">{myInv.filter(i=>i.status==='sent').length} новых</span></div>
       </div>
     </div>
@@ -29,7 +47,8 @@ function CandHome({me,invites,go}){
         {me.fsp.length?<FspBadge fsp={me.fsp}/>:<div className="stack-12"><div style={{fontSize:14}}>Истории ФСП нет. Вы ранжируетесь по тесту и регулярным заданиям.</div><div className="hint">Участие в соревнованиях ФСП добавит до 15 баллов к рейтингу в категории.</div></div>}
       </Panel>
       <Panel title="Почему вы на этом месте">
-        {(()=>{const s=D.score(me,{stack:[]});return <div className="stack-12">
+        {!me.grade?<div className="stack-12"><div style={{fontSize:14}}>Место в категории появится, когда тест подтвердит грейд.</div><div className="hint">Из чего оно складывается: тест — до 45 баллов, ФСП — до 15, свежесть заданий — до 10, проверка эксперта — 5. Ещё 25 — совпадение стека с потребностью компании.</div></div>
+        :(()=>{const s=D.score(me,{stack:[]});return <div className="stack-12">
           {[['Тест',s.parts.test,45],['ФСП',s.parts.fsp,15],['Свежесть заданий',s.parts.fresh,10],['Экспертная проверка',s.parts.expert,5]].map(([k,v,m])=><div key={k} className="eval-row"><span style={{fontSize:13}}>{k}</span><Bar value={v} max={m}/><span className="num">{Math.round(v)}/{m}</span></div>)}
           <div className="hint">Ещё 25 баллов — совпадение стека с потребностью конкретной компании.</div></div>})()}
       </Panel>
@@ -111,72 +130,92 @@ function CandVacancies({responses,setResponses,toast}){
 }
 
 const GRADE_IDS=['intern','junior','middle','senior'];
-function CandGrade({me}){
+// Демо-история — только у демо-аккаунта; у зарегистрированного история из его тестов
+const DEMO_STORY=[
+  {date:'02.07.2026',text:'Опрос: Backend · Python, Go, PostgreSQL, Kafka, Docker · опыт 3 года'},
+  {date:'02.07.2026',text:'Тест на Middle «Дедупликация платёжных событий» — ИИ 82/100'},
+  {date:'09.07.2026',text:'Эксперт «Северный код» скорректировал оценку: 86/100 (граничные случаи по ts учтены частично)'},
+  {date:'09.07.2026',text:'Присвоена категория Backend · Middle'}];
+function CandGrade({me,onTests}){
   const [modal,setModal]=React.useState(null);
   const [vibe,setVibe]=React.useState(null);
-  // Грейд, доступные тесты и история — с бэкенда; пока их нет, показываем демо-профиль
+  // Грейд, доступные тесты и история — с бэкенда; после теста обновляем и профиль в шапке
   const [st,setSt]=React.useState(null);const [hist,setHist]=React.useState([]);
   const cat=D.specLabel(me.spec);
-  React.useEffect(()=>{if(vibe)return;WS.grade(cat).then(setSt).catch(()=>setSt(null));WS.history().then(setHist).catch(()=>setHist([]))},[vibe]);
+  React.useEffect(()=>{if(vibe)return;WS.grade(cat).then(setSt).catch(()=>setSt(null));WS.history().then(setHist).catch(()=>setHist([]));onTests&&onTests()},[vibe]);
   if(vibe&&vibe.run) return <VibeTest category={cat} level={vibe.run} onExit={()=>setVibe(null)} onSubmit={id=>setVibe({attempt:id})}/>;
   if(vibe) return <VibeResult attemptId={vibe.attempt} onExit={()=>setVibe(null)}/>;
-  const grade=st&&st.grade||me.grade;const gi=GRADE_IDS.indexOf(grade);
-  const up=GRADE_IDS[gi+1],down=gi>0?GRADE_IDS[gi-1]:null;
+  const grade=st?st.grade||baseGrade():me.grade;const gi=GRADE_IDS.indexOf(grade);
+  // С грейдом — тест на соседний уровень; без грейда — на любой
+  const up=grade?GRADE_IDS[gi+1]:null,down=gi>0?GRADE_IDS[gi-1]:null;
+  const levels=grade?[up,down].filter(Boolean):GRADE_IDS;
   const why=l=>{const t=st&&st.tests.find(x=>x.level===l);return t&&!t.available?t.reason+(t.available_from?' (с '+fmtDate(t.available_from)+')':''):''};
+  const shut=levels.filter(why);
+  const shutHint=shut.length>1&&shut.length===levels.length&&new Set(shut.map(why)).size===1?why(shut[0]):shut.map(l=>D.gradeLabel(l)+': '+why(l)).join(' · ');
   const active=hist.find(a=>a.status==='active');
   const story=[...hist].reverse().map(a=>({date:fmtDate(a.started_at),text:'Тест на '+D.gradeLabel(a.level)+' «'+a.task_title+'» — '+(a.status==='active'?'идёт':a.final?'ИИ '+a.ai_score+'/100'+(a.final.score!==a.ai_score?', после проверки эксперта '+a.final.score+'/100':'')+', '+(a.annulled?'аннулирован':a.final.passed?'пройден':'не пройден'):a.grading_status==='failed'?'проверка не удалась':'проверяется')+(a.tab_leaves?' · уходов со вкладки: '+a.tab_leaves:'')}));
+  const items=[...(isRegistered()?[]:DEMO_STORY),...story];
   return <div className="page">
     <PageHead eyebrow="// грейд" title="Грейд и тесты"/>
     <div className="grid-2">
       <Panel title="Текущий статус"><div className="stack-16">
-        <div className="big-cat" style={{fontSize:36}}>{D.specLabel(me.spec)} · <span style={{color:'var(--accent-text)'}}>{D.gradeLabel(grade)}</span></div>
-        <Kv k="Отрасли" v="Финтех"/><Kv k="Тест" v={st&&st.grade?st.score+'/100 · подтверждён '+fmtDate(st.confirmed_at):me.test+'/100 · подтверждён экспертом 09.07.2026'}/>
+        <div className="big-cat" style={{fontSize:36}}>{D.specLabel(me.spec)} · <span style={{color:grade?'var(--accent-text)':'var(--fg-2)'}}>{grade?D.gradeLabel(grade):'без грейда'}</span></div>
+        <Kv k="Отрасли" v="Финтех"/><Kv k="Тест" v={st&&st.grade?st.score+'/100 · подтверждён '+fmtDate(st.confirmed_at)+(me.expert?', проверен экспертом':', ИИ-оценка'):grade?me.test+'/100 · подтверждён экспертом 09.07.2026':'грейд пока не подтверждён'}/>
       </div></Panel>
-      <Panel title="Смена грейда"><div className="stack-16">
+      <Panel title={grade?'Смена грейда':'Тест на грейд'}><div className="stack-16">
         <div className="row-12">{st&&st.frozen_until?<Tag discipline="red">Тесты заморожены до {fmtDate(st.frozen_until)}</Tag>:st&&!st.change_available?<Tag>Доступно с {fmtDate(st.next_change_at)}</Tag>:<Tag discipline="security">Доступно сейчас</Tag>}<span className="hint">раз в 3 месяца</span></div>
         <div className="vibe-promo"><div className="row-12"><span className="beta">Тестовый режим</span><b style={{fontSize:14}}>Вайбкодинг с ИИ</b></div><span className="hint">Тест на повышение проходит вместе с ИИ-ассистентом: оцениваем, как вы ставите ему задачу и проверяете его код.</span></div>
         {active?<div><Button onClick={()=>setVibe({run:active.level})}>Вернуться к тесту на {D.gradeLabel(active.level)}</Button></div>
-        :<div className="row-12" style={{flexWrap:'wrap'}}>{up&&<Button onClick={()=>setModal('up')} disabled={!!why(up)}>Тест на {D.gradeLabel(up)}</Button>}{down&&<Button variant="secondary" onClick={()=>setModal('down')} disabled={!!why(down)}>Тест на {D.gradeLabel(down)}</Button>}</div>}
-        {!active&&(why(up)||why(down))&&<div className="hint">{up&&down&&why(up)===why(down)?why(up):[up&&why(up)&&D.gradeLabel(up)+': '+why(up),down&&why(down)&&D.gradeLabel(down)+': '+why(down)].filter(Boolean).join(' · ')}</div>}
+        :grade?<div className="row-12" style={{flexWrap:'wrap'}}>{up&&<Button onClick={()=>setModal({kind:'up',level:up})} disabled={!!why(up)}>Тест на {D.gradeLabel(up)}</Button>}{down&&<Button variant="secondary" onClick={()=>setModal({kind:'down',level:down})} disabled={!!why(down)}>Тест на {D.gradeLabel(down)}</Button>}</div>
+        :<div className="row-12" style={{flexWrap:'wrap'}}>{GRADE_IDS.map(l=><Button key={l} variant="secondary" onClick={()=>setModal({kind:'up',level:l})} disabled={!!why(l)}>Тест на {D.gradeLabel(l)}</Button>)}</div>}
+        {!active&&shut.length>0&&<div className="hint">{shutHint}</div>}
       </div></Panel>
     </div>
     <Panel title="История опроса и тестов">
-      <Timeline items={[
-        {date:'02.07.2026',text:'Опрос: Backend · Python, Go, PostgreSQL, Kafka, Docker · опыт 3 года'},
-        {date:'02.07.2026',text:'Тест на Middle «Дедупликация платёжных событий» — ИИ 82/100'},
-        {date:'09.07.2026',text:'Эксперт «Северный код» скорректировал оценку: 86/100 (граничные случаи по ts учтены частично)'},
-        {date:'09.07.2026',text:'Присвоена категория Backend · Middle'},...story]}/>
+      {items.length?<Timeline items={items}/>:<span className="hint">Тестов пока не было.</span>}
     </Panel>
-    {modal==='up'&&<Modal title={'Тест на '+D.gradeLabel(up)+' · вайбкодинг'} onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button onClick={()=>{setModal(null);setVibe({run:up})}}>Начать, 30 минут</Button></>}>
+    {modal&&modal.kind==='up'&&<Modal title={'Тест на '+D.gradeLabel(modal.level)+' · вайбкодинг'} onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button onClick={()=>{setModal(null);setVibe({run:modal.level})}}>Начать, 30 минут</Button></>}>
       <div className="stack-16"><div className="row-12"><span className="beta">Тестовый режим</span></div>
-      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Одна задача уровня {D.gradeLabel(up)}, 30 минут. Рядом с редактором — ИИ-ассистент: просите код, спорьте с ним, правьте вручную. Ассистент может ошибаться, и заметить это — часть проверки.</p>
+      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Одна задача уровня {D.gradeLabel(modal.level)}, 30 минут. Рядом с редактором — ИИ-ассистент: просите код, спорьте с ним, правьте вручную. Ассистент может ошибаться, и заметить это — часть проверки.</p>
       <ul className="ul"><li>Все запросы к ассистенту и принятые правки попадают в отчёт</li><li>Итог выносит ИИ по критериям задачи, эксперт может его скорректировать</li><li>Уход со вкладки запрещён: он отмечается в результате, попытку могут аннулировать</li><li>При успехе грейд меняется, следующая смена — через 3 месяца</li></ul></div>
     </Modal>}
-    {modal==='down'&&<Modal title={'Тест на '+D.gradeLabel(down)} onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button variant="red" onClick={()=>{setModal(null);setVibe({run:down})}}>Понимаю, начать</Button></>}>
-      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Если пройдёте тест, категория сменится на {D.specLabel(me.spec)} · {D.gradeLabel(down)}, и следующая смена будет доступна через 3 месяца. Текущий грейд принудительно не понижается — тест вы проходите по своему решению.</p>
+    {modal&&modal.kind==='down'&&<Modal title={'Тест на '+D.gradeLabel(modal.level)} onClose={()=>setModal(null)} footer={<><Button variant="ghost" onClick={()=>setModal(null)}>Отмена</Button><Button variant="red" onClick={()=>{setModal(null);setVibe({run:modal.level})}}>Понимаю, начать</Button></>}>
+      <p style={{margin:0,fontSize:14,lineHeight:1.6}}>Если пройдёте тест, категория сменится на {D.specLabel(me.spec)} · {D.gradeLabel(modal.level)}, и следующая смена будет доступна через 3 месяца. Текущий грейд принудительно не понижается — тест вы проходите по своему решению.</p>
     </Modal>}
   </div>;
 }
 
+// Поля резюме и грейд из профиля попадают в PDF-профиль
+const RESUME={name:'Корнеев Алексей Игоревич',city:'Казань',email:'a.korneev@mail.ru',phone:'+7 917 000-12-34',roles:'Разработчик, ревьюер, дежурный on-call',years:'3 года',
+  exp:'2023–н.в. · Платёжный сервис, backend-разработчик\nСервис выплат на Go и Python, миграция с RabbitMQ на Kafka, p99 с 800 до 120 мс.'};
+const SOFT=['Менторство','Публичные выступления','Документирование','Работа с бизнесом'];
 function CandResume({me,toast}){
-  const [pdf,setPdf]=React.useState(false);
+  const [pdf,setPdf]=React.useState(false);const [busy,setBusy]=React.useState(false);
+  const [r,setR]=React.useState(RESUME);const set=k=>e=>setR(o=>({...o,[k]:e.target.value}));
+  const name=r.name.trim().split(/\s+/).slice(0,2).join(' '),soft=SOFT.slice(0,3);
+  const status=me.grade?'тест '+me.test+'/100, '+(me.expert?'подтверждено экспертом':'ИИ-оценка'):'грейд не подтверждён';
+  const download=async()=>{setBusy(true);
+    try{const file=await downloadProfilePdf({name,spec:D.specLabel(me.spec),grade:me.grade&&D.gradeLabel(me.grade),status:status[0].toUpperCase()+status.slice(1),
+      contacts:[r.city,r.email,r.phone],stack:me.stack,years:r.years,exp:r.exp,roles:r.roles,fsp:me.fsp,soft});setPdf(false);toast(file+' скачан')}
+    catch(e){toast('Не удалось сформировать PDF, попробуйте ещё раз')}
+    setBusy(false)};
   return <div className="page">
     <PageHead eyebrow="// резюме" title="Резюме" action={<div className="row-12"><Button variant="secondary" size="sm" onClick={()=>toast('Распознано: ФИО, контакты, стек, опыт, роли')}>Загрузить PDF</Button><Button size="sm" onClick={()=>setPdf(true)}>Сформировать PDF-профиль</Button></div>} sub="Резюме дополняет профиль. Выдача для работодателей строится по категории и тесту, а не по тексту резюме."/>
     <Panel><div className="stack-24">
-      <div className="grid-2"><Field label="ФИО"><Input defaultValue="Корнеев Алексей Игоревич"/></Field><Field label="Город"><Input defaultValue="Казань"/></Field>
-        <Field label="Почта"><Input defaultValue="a.korneev@mail.ru"/></Field><Field label="Телефон"><Input defaultValue="+7 917 000-12-34"/></Field></div>
+      <div className="grid-2"><Field label="ФИО"><Input value={r.name} onChange={set('name')}/></Field><Field label="Город"><Input value={r.city} onChange={set('city')}/></Field>
+        <Field label="Почта"><Input value={r.email} onChange={set('email')}/></Field><Field label="Телефон"><Input value={r.phone} onChange={set('phone')}/></Field></div>
       <Field label="Стек"><div className="chips">{me.stack.map(s=><Tag key={s}>{s}</Tag>)}</div></Field>
-      <div className="grid-2"><Field label="Роли в команде"><Input defaultValue="Разработчик, ревьюер, дежурный on-call"/></Field><Field label="Стаж"><Input defaultValue="3 года"/></Field></div>
-      <Field label="Опыт"><Textarea rows={5} defaultValue={'2023–н.в. · Платёжный сервис, backend-разработчик\nСервис выплат на Go и Python, миграция с RabbitMQ на Kafka, p99 с 800 до 120 мс.'}/></Field>
-      <Field label="Софт-скиллы"><div className="chips">{['Менторство','Публичные выступления','Документирование','Работа с бизнесом'].map((s,i)=><Chip key={s} on={i<3} small>{s}</Chip>)}</div></Field>
+      <div className="grid-2"><Field label="Роли в команде"><Input value={r.roles} onChange={set('roles')}/></Field><Field label="Стаж"><Input value={r.years} onChange={set('years')}/></Field></div>
+      <Field label="Опыт"><Textarea rows={5} value={r.exp} onChange={set('exp')}/></Field>
+      <Field label="Софт-скиллы"><div className="chips">{SOFT.map(s=><Chip key={s} on={soft.includes(s)} small>{s}</Chip>)}</div></Field>
     </div></Panel>
-    {pdf&&<Modal title="PDF-профиль" width={560} onClose={()=>setPdf(false)} footer={<Button onClick={()=>{setPdf(false);toast('profile_korneev.pdf скачан')}}>Скачать PDF</Button>}>
+    {pdf&&<Modal title="PDF-профиль" width={560} onClose={()=>setPdf(false)} footer={<Button onClick={download} disabled={busy}>{busy?'Формируем…':'Скачать PDF'}</Button>}>
       <div className="pdf">
-        <div className="row-12" style={{justifyContent:'space-between'}}><b>КОРНЕЕВ АЛЕКСЕЙ</b><img src="assets/fsp-mark-dark.png" alt="" style={{height:28,filter:'invert(1) hue-rotate(180deg)'}}/></div>
-        <div style={{fontSize:12}}>Backend · Middle · тест 86/100, подтверждено экспертом</div>
-        <hr/><div style={{fontSize:11}}>Python · Go · PostgreSQL · Kafka · Docker</div>
+        <div className="row-12" style={{justifyContent:'space-between'}}><b>{name.toUpperCase()}</b><img src="assets/fsp-mark-dark.png" alt="" style={{height:28,filter:'invert(1) hue-rotate(180deg)'}}/></div>
+        <div style={{fontSize:12}}>{D.specLabel(me.spec)} · {me.grade?D.gradeLabel(me.grade)+' · ':''}{status}</div>
+        <hr/><div style={{fontSize:11}}>{me.stack.join(' · ')}</div>
         {me.fsp.length?<div style={{fontSize:11}}>ФСП: {me.fsp.map(f=>f.place+', '+f.event).join('; ')}</div>:null}
-        <div style={{fontSize:11}}>2023–н.в. · Платёжный сервис, backend-разработчик</div>
+        <div style={{fontSize:11}}>{r.exp.split('\n')[0]}</div>
         <div className="pdf-ph"></div><div className="pdf-ph" style={{width:'70%'}}></div>
       </div>
     </Modal>}
