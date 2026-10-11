@@ -335,12 +335,17 @@ def _category(value: str) -> str:
         raise BadRequest(str(exc)) from exc
 
 
-@router.get("/health", tags=["служебное"])
+# Пометка в Swagger для служебных адресов: сайт не пропускает их наружу (frontend/nginx.conf)
+CLOSED = " (снаружи закрыто)"
+
+
+@router.get("/health", summary="Проверка работы сервиса", tags=["служебное"])
 async def health() -> dict[str, str]:
+    """Отвечает {"status": "ok"}, когда сервис запущен. По нему Docker проверяет, жив ли контейнер."""
     return {"status": "ok"}
 
 
-@router.get("/tasks", response_model=list[TaskOut], tags=["задачи"])
+@router.get("/tasks", summary="Банк задач" + CLOSED, response_model=list[TaskOut], tags=["задачи"])
 async def list_tasks(
     request: Request,
     category: str | None = None,
@@ -352,20 +357,26 @@ async def list_tasks(
     return [task_view(t).model_dump() for t in await _service(request).list_tasks(category, grade, status)]
 
 
-@router.post("/tasks/{task_id}/review", response_model=Task, tags=["задачи"])
+@router.post("/tasks/{task_id}/review", summary="Решение эксперта по задаче" + CLOSED, response_model=Task, tags=["задачи"])
 async def review_task(task_id: str, body: TaskReviewIn, request: Request):
     """Эксперт проверил задачу на решаемость: approved=true — задача выдаётся кандидатам, false — нет.
     Прорешать задачу на проверке эксперт может сам: POST /attempts с её task_id."""
     return await _service(request).review_task(task_id, body.expert, body.approved, body.comment)
 
 
-@router.get("/tasks/{task_id}", response_model=Task, tags=["задачи"])
+@router.get("/tasks/{task_id}", summary="Задача целиком, с эталоном" + CLOSED, response_model=Task, tags=["задачи"])
 async def get_task(task_id: str, request: Request):
     """Задача целиком: стартовые файлы, эталон, критерии и пороги. Для банка задач, не для кандидата."""
     return await _service(request).get_task(task_id)
 
 
-@router.post("/tasks/generate", response_model=GenerationOut, status_code=status.HTTP_202_ACCEPTED, tags=["задачи"])
+@router.post(
+    "/tasks/generate",
+    summary="Сгенерировать задачу" + CLOSED,
+    response_model=GenerationOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["задачи"],
+)
 async def generate_task(body: GenerationRequest, request: Request):
     """Сгенерировать задачу под категории и грейды. Идёт в фоне — статус в GET /tasks/generations/{id}.
     Модель пишет условие, файлы, тесты, эталон, критерии и пороги; платформа проверяет их и при ошибках
@@ -373,12 +384,14 @@ async def generate_task(body: GenerationRequest, request: Request):
     return await request.app.state.generator.create(body)
 
 
-@router.get("/tasks/generations/{generation_id}", response_model=GenerationOut, tags=["задачи"])
+@router.get("/tasks/generations/{generation_id}", summary="Ход генерации задачи" + CLOSED, response_model=GenerationOut, tags=["задачи"])
 async def get_generation(generation_id: str, request: Request):
+    """Генерация, запущенная POST /tasks/generate: status pending → running → done или failed.
+    Когда done — task_id задачи в банке; report — проверки платформы, draft — последний черновик модели."""
     return await request.app.state.generator.job(generation_id)
 
 
-@router.post("/attempts", response_model=AttemptOut, status_code=status.HTTP_201_CREATED, tags=["попытка"])
+@router.post("/attempts", summary="Начать тест", response_model=AttemptOut, status_code=status.HTTP_201_CREATED, tags=["попытка"])
 async def start_attempt(body: StartAttempt, request: Request):
     """Старт теста на категорию и грейд: запускается таймер, файлы задачи копируются в попытку.
     Без task_id задача выбирается случайно среди подходящих, сначала из нерешённых кандидатом.
@@ -400,19 +413,19 @@ async def start_attempt(body: StartAttempt, request: Request):
     return await service.state(attempt_id)
 
 
-@router.get("/attempts/{attempt_id}", response_model=AttemptOut, tags=["попытка"])
+@router.get("/attempts/{attempt_id}", summary="Состояние попытки", response_model=AttemptOut, tags=["попытка"])
 async def get_attempt(attempt_id: str, request: Request):
     """Полное состояние: условие, файлы, правки, лента чата, счётчики, остаток времени."""
     return await _service(request).state(attempt_id)
 
 
-@router.get("/attempts/{attempt_id}/events", response_model=list[EventOut], tags=["попытка"])
+@router.get("/attempts/{attempt_id}/events", summary="Журнал сессии" + CLOSED, response_model=list[EventOut], tags=["попытка"])
 async def get_events(attempt_id: str, request: Request, after_id: int = 0):
     """Журнал сессии — то, по чему потом оценивается процесс."""
     return await _service(request).events(attempt_id, after_id)
 
 
-@router.post("/attempts/{attempt_id}/assistant", response_model=AssistantOut, tags=["ассистент"])
+@router.post("/attempts/{attempt_id}/assistant", summary="Сообщение ассистенту", response_model=AssistantOut, tags=["ассистент"])
 async def ask_assistant(attempt_id: str, body: AssistantIn, request: Request):
     """Сообщение ассистенту. Ответ приходит, когда ассистент закончит; промежуточные шаги — в WebSocket.
 
@@ -421,25 +434,30 @@ async def ask_assistant(attempt_id: str, body: AssistantIn, request: Request):
     return await request.app.state.assistant.reply(attempt_id, body.text)
 
 
-@router.put("/attempts/{attempt_id}/files", response_model=SaveFileOut, tags=["файлы"])
+@router.put("/attempts/{attempt_id}/files", summary="Сохранить файл", response_model=SaveFileOut, tags=["файлы"])
 async def save_file(attempt_id: str, body: SaveFileIn, request: Request):
     """Ручная правка кандидата. Непринятые правки ассистента к этому файлу становятся stale."""
     return await _service(request).save_file(attempt_id, body.path, body.content)
 
 
-@router.post("/attempts/{attempt_id}/edits/{edit_id}/accept", response_model=EditOut, tags=["файлы"])
+@router.post("/attempts/{attempt_id}/edits/{edit_id}/accept", summary="Принять правку ассистента", response_model=EditOut, tags=["файлы"])
 async def accept_edit(attempt_id: str, edit_id: int, request: Request):
     """Применить правку ассистента. 409, если файл успел измениться."""
     return await _service(request).decide_edit(attempt_id, edit_id, accept=True)
 
 
-@router.post("/attempts/{attempt_id}/edits/{edit_id}/reject", response_model=EditOut, tags=["файлы"])
+@router.post("/attempts/{attempt_id}/edits/{edit_id}/reject", summary="Отклонить правку ассистента", response_model=EditOut, tags=["файлы"])
 async def reject_edit(attempt_id: str, edit_id: int, request: Request, body: RejectIn | None = None):
+    """Отклонить правку ассистента, можно с причиной (reason). Отказ пишется в журнал сессии
+    и засчитывается в критерий «проверял работу ассистента». 409 — правка уже обработана или тест закончен."""
     return await _service(request).decide_edit(attempt_id, edit_id, accept=False, reason=(body.reason if body else ""))
 
 
-@router.post("/attempts/{attempt_id}/tests", response_model=TestRunOut, tags=["файлы"])
+@router.post("/attempts/{attempt_id}/tests", summary="Запустить тесты", response_model=TestRunOut, tags=["файлы"])
 async def run_tests(attempt_id: str, request: Request):
+    """Прогнать тесты задачи на текущих файлах попытки — в песочнице без сети, с лимитом времени.
+    Ответ: прошли ли тесты, код выхода, вышло ли время, длительность и вывод. Запуск пишется в журнал сессии.
+    400 — в задаче нет тестов, 409 — тест закончен."""
     result = await _service(request).run_tests(attempt_id, by="candidate")
     return TestRunOut(
         passed=result.passed,
@@ -450,14 +468,14 @@ async def run_tests(attempt_id: str, request: Request):
     )
 
 
-@router.post("/attempts/{attempt_id}/focus", tags=["попытка"])
+@router.post("/attempts/{attempt_id}/focus", summary="Уход со вкладки и возврат", tags=["попытка"])
 async def focus(attempt_id: str, body: FocusIn, request: Request) -> dict[str, bool]:
     """Кандидат ушёл со вкладки теста или вернулся. Уход запрещён: любой отмечается в результате,
     попытку помечаем, решает человек. 409 — тест уже закончен."""
     return await _service(request).record_focus(attempt_id, body.left)
 
 
-@router.post("/attempts/{attempt_id}/submit", response_model=SubmitOut, tags=["попытка"])
+@router.post("/attempts/{attempt_id}/submit", summary="Сдать решение", response_model=SubmitOut, tags=["попытка"])
 async def submit(attempt_id: str, request: Request):
     """Сдать решение. Проверка запускается сразу в фоне; когда закончится — событие grading.completed в WebSocket."""
     result = await _service(request).submit(attempt_id)
@@ -465,26 +483,26 @@ async def submit(attempt_id: str, request: Request):
     return result
 
 
-@router.get("/attempts/{attempt_id}/result", response_model=GradingOut, tags=["проверка"])
+@router.get("/attempts/{attempt_id}/result", summary="Результат теста", response_model=GradingOut, tags=["проверка"])
 async def get_result(attempt_id: str, request: Request):
     """Результат теста: балл из 100, вердикты по критериям с цитатами, итог — оценка LLM после постобработки.
     Один и тот же для кандидата и работодателя; разграничение доступа — в основной части платформы."""
     return await request.app.state.grades.result(attempt_id)
 
 
-@router.get("/candidates/{candidate_id}/grade", response_model=GradeStatusOut, tags=["грейд"])
+@router.get("/candidates/{candidate_id}/grade", summary="Грейд кандидата в категории", response_model=GradeStatusOut, tags=["грейд"])
 async def grade_status(candidate_id: str, category: str, request: Request):
     """Экран «Грейд и тесты»: текущий грейд в категории, балл, когда можно менять, какие тесты доступны."""
     return await request.app.state.grades.status(candidate_id, _category(category))
 
 
-@router.get("/candidates/{candidate_id}/attempts", response_model=list[HistoryItemOut], tags=["грейд"])
+@router.get("/candidates/{candidate_id}/attempts", summary="История тестов кандидата", response_model=list[HistoryItemOut], tags=["грейд"])
 async def test_history(candidate_id: str, request: Request):
     """«История тестов»: тест, балл, итог. Новые сверху."""
     return await request.app.state.grades.history(candidate_id)
 
 
-@router.post("/attempts/{attempt_id}/review", response_model=GradingOut, tags=["проверка"])
+@router.post("/attempts/{attempt_id}/review", summary="Решение человека по оценке ИИ", response_model=GradingOut, tags=["проверка"])
 async def review_attempt(attempt_id: str, body: AttemptReviewIn, request: Request):
     """Решение человека по попытке. annul=true — аннулирована: грейд, полученный ею, снимается
     (возвращается прежний), тесты кандидата заморожены на 30 дней. verdicts — исправленные вердикты по критериям:
@@ -493,14 +511,14 @@ async def review_attempt(attempt_id: str, body: AttemptReviewIn, request: Reques
     return await request.app.state.grades.review(attempt_id, body.reviewer, body.annul, body.comment, body.verdicts)
 
 
-@router.get("/reviews", response_model=list[ReviewQueueItemOut], tags=["проверка"])
+@router.get("/reviews", summary="Очередь проверки оценок", response_model=list[ReviewQueueItemOut], tags=["проверка"])
 async def review_queue(request: Request):
     """Очередь «Проверки оценок»: сданные попытки с готовой оценкой ИИ. Сначала помеченные за уход со вкладки
     и ещё не решённые, потом остальные без решения, потом решённые; внутри — новые сверху."""
     return await request.app.state.grades.queue()
 
 
-@router.post("/attempts/{attempt_id}/grade", status_code=status.HTTP_202_ACCEPTED, tags=["проверка"])
+@router.post("/attempts/{attempt_id}/grade", summary="Перепроверить попытку" + CLOSED, status_code=status.HTTP_202_ACCEPTED, tags=["проверка"])
 async def regrade(attempt_id: str, request: Request) -> dict[str, str]:
     """Перепроверить завершённую попытку — например, после правки рубрики или промпта судьи."""
     await request.app.state.grader.request(attempt_id)

@@ -17,7 +17,7 @@ cp .env.example .env
 .venv/Scripts/uvicorn app.main:app --reload --port 8010
 ```
 
-Swagger: http://localhost:8010/docs. По умолчанию `LLM_MODE=stub`: ассистент — заглушка без сети, отвечает по ключевым словам («исправь», «запусти тесты», «файлы»). Для реальной модели укажите `LLM_MODE=live` и ключ в `.env`.
+Swagger: http://localhost:8010/docs, через сайт — `/api/workspace/docs` (служебные адреса там помечены «снаружи закрыто»). По умолчанию `LLM_MODE=stub`: ассистент — заглушка без сети, отвечает по ключевым словам («исправь», «запусти тесты», «файлы»). Для реальной модели укажите `LLM_MODE=live` и ключ в `.env`.
 
 Тесты: `.venv/Scripts/pytest`. На Postgres: `TEST_DATABASE_URL=postgresql+asyncpg://user:pass@localhost/test_db pytest` — база очищается перед каждым тестом.
 

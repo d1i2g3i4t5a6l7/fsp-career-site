@@ -5,7 +5,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api import router
 from app.assistant import Assistant, AssistantFailed, Busy
@@ -104,14 +105,26 @@ def create_app(settings: Settings | None = None, *, gateway: Gateway | None = No
         version="0.1.0",
         description=(
             "Сессия решения задачи: файлы, ИИ-ассистент с правками на подтверждение, тесты в песочнице, журнал. "
-            "После сдачи или конца времени — проверка LLM-судьёй по рубрике задачи и грейд."
+            "После сдачи или конца времени — проверка LLM-судьёй по рубрике задачи и грейд.\n\n"
+            "Адреса с пометкой «снаружи закрыто» — служебные: по ссылке сайта они отвечают 404 и работают только "
+            "на самом сервере. Остальными пользуется сайт — их можно вызвать прямо отсюда, кнопкой «Try it out». "
+            "Живые события попытки — WebSocket `/attempts/{attempt_id}/ws`: в Swagger его не видно, снаружи закрыт."
         ),
+        # Swagger открывается и напрямую (localhost:8010/docs), и через сайт (/api/workspace/docs):
+        # «Try it out» шлёт запросы туда же, откуда загружено описание API
+        servers=[{"url": ".", "description": "этот же адрес"}],
+        docs_url=None,
         lifespan=lifespan,
     )
     app.add_middleware(
         CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"]
     )
     app.include_router(router)
+
+    @app.get("/docs", include_in_schema=False)
+    async def swagger() -> HTMLResponse:
+        # Адрес описания относительный: со страницы /api/workspace/docs он ведёт на /api/workspace/openapi.json
+        return get_swagger_ui_html(openapi_url="openapi.json", title=app.title)
 
     errors = {
         NotFound: 404,

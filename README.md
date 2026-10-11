@@ -97,7 +97,7 @@ localhost:8010 ──► workspace ──unix-сокет──► runner   (бе
                        └── HTTPS ─────────► GigaChat: API Сбера / cloud.ru
 ```
 
-- **web** — готовый сайт из `frontend/`, около 10 МБ памяти. Запросы сайта `api/workspace/…` пересылает в `workspace`, причём только те, которыми сайт пользуется; служебное (генерация задач, задачи с эталоном, одобрение задач, перепроверка, Swagger) — только напрямую на машине со стендом, http://localhost:8010. Для показа наружу можно поставить общий пароль на сайт: `SITE_PASSWORD=… docker compose up -d web`, логин `fsp`. Порт открыт только на `127.0.0.1`, другой порт — `WEB_PORT=8081 docker compose up -d`.
+- **web** — готовый сайт из `frontend/`, около 10 МБ памяти. Запросы сайта `api/workspace/…` пересылает в `workspace`, причём только те, которыми сайт пользуется, и Swagger для экспертов (`/api/workspace/docs`); служебное (генерация задач, задачи с эталоном, одобрение задач, перепроверка) — только напрямую на машине со стендом, http://localhost:8010, в Swagger оно помечено «снаружи закрыто». Для показа наружу можно поставить общий пароль на сайт: `SITE_PASSWORD=… docker compose up -d web`, логин `fsp`. Порт открыт только на `127.0.0.1`, другой порт — `WEB_PORT=8081 docker compose up -d`.
 - **workspace** — один процесс uvicorn: очереди к моделям, события WebSocket и фоновые проверки живут в памяти. Не масштабировать копиями. Порт открыт только на `127.0.0.1`: авторизации пока нет, а `GET /tasks/{id}` отдаёт эталон.
 - **runner** — `network_mode: none`, файловая система только для чтения, лимиты 1 ГБ памяти и 256 процессов, 20 с на запуск, 64 КБ вывода. Пакеты для кода кандидата (numpy, pandas…) — в `runner/requirements.txt`, тот же список — в `SANDBOX_PACKAGES` в `workspace/.env`.
 - **postgres** — PostgreSQL 17 с pgvector. Таблицы workspace создаются при старте, миграций пока нет.
@@ -156,4 +156,5 @@ localhost:8010 ──► workspace ──unix-сокет──► runner   (бе
 | Vite (сборка сайта) | 6.4.4 | MIT |
 | React (сайт) | 18.3.1 | MIT |
 | nginx (раздача сайта) | 1.27 | BSD-2-Clause |
+| Swagger UI (документация API) | 5, с jsDelivr — как в FastAPI | Apache-2.0 |
 | Модели | GigaChat 3.x: API Сбера, cloud.ru, свой vLLM — [архитектура](docs/02-architecture.md#gigachat-3x-какие-модели-и-как-подключаем) | — |
